@@ -335,12 +335,6 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
         </div>
       )}
 
-      <div className="text-xs text-gray-700 text-center mt-4">
-        코인이 없다면 Supabase SQL Editor에서 실행:
-        <code className="ml-2 bg-white/5 px-2 py-0.5 rounded text-gray-500">
-          UPDATE profiles SET balance = 10000 WHERE is_admin = true;
-        </code>
-      </div>
     </div>
   );
 }

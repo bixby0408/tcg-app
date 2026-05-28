@@ -261,6 +261,7 @@ function SellTab({
   const [isPending, startTransition] = useTransition();
   const [priceHistory, setPriceHistory] = useState<Array<{ price: number; transaction_type: "market_buy" | "instant_sell"; created_at: string }>>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [rarityFilter, setRarityFilter] = useState("전체");
   const router = useRouter();
 
   const selected = myCards.find((c) => c.userCardId === selectedId);
@@ -273,13 +274,24 @@ function SellTab({
       setLoadingHistory(false);
     });
   }, [selected?.card.id]);
+
   const marketPrice = selected?.card.current_price ?? 0;
   const instantPrice = marketPrice > 0 ? Math.floor(marketPrice * 0.85) : 0;
-
   const priceNum = Number(price);
   const pricePct = marketPrice > 0 && priceNum > 0
     ? Math.round(((priceNum - marketPrice) / marketPrice) * 100)
     : null;
+
+  const ownedRarities = [...new Set(myCards.map((c) => c.card.rarity))];
+  const filteredCards = rarityFilter === "전체"
+    ? myCards
+    : myCards.filter((c) => c.card.rarity === rarityFilter);
+
+  function handleSelect(id: string) {
+    setSelectedId((prev) => prev === id ? "" : id);
+    setConfirming(false);
+    setPrice("");
+  }
 
   function handleMarketSell() {
     if (!selectedId || !price || priceNum <= 0) return;
@@ -317,7 +329,7 @@ function SellTab({
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-4">
       {/* 모드 토글 */}
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1">
         <button
@@ -334,40 +346,90 @@ function SellTab({
             mode === "instant" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
           }`}
         >
-          즉시 판매
+          즉시 판매 <span className="text-xs font-normal opacity-60">(시세 85%)</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
-        {mode === "market" ? (
-          <h2 className="font-semibold text-gray-900">마켓 판매 등록</h2>
-        ) : (
-          <div>
-            <h2 className="font-semibold text-gray-900">즉시 판매</h2>
-            <p className="text-xs text-gray-400 mt-0.5">현재 시세의 85%로 즉시 코인화</p>
-          </div>
-        )}
-
-        {/* 카드 선택 */}
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">판매할 카드 선택</label>
-          <select
-            value={selectedId}
-            onChange={(e) => { setSelectedId(e.target.value); setConfirming(false); }}
-            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            <option value="">카드를 선택하세요</option>
-            {myCards.map((c) => (
-              <option key={c.userCardId} value={c.userCardId}>
-                [{c.card.rarity}] {c.card.name}
-                {c.card.current_price > 0 ? ` — 시세 ${c.card.current_price.toLocaleString()} C` : ""}
-              </option>
-            ))}
-          </select>
+      {/* 카드 선택 그리드 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-700">판매할 카드 선택</p>
+          {selected && (
+            <button
+              onClick={() => handleSelect(selectedId)}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              선택 해제
+            </button>
+          )}
         </div>
 
-        {/* 선택된 카드 미리보기 */}
-        {selected && (
+        {/* 등급 필터 */}
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {["전체", ...ownedRarities].map((r) => (
+            <button
+              key={r}
+              onClick={() => setRarityFilter(r)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                rarityFilter === r
+                  ? "bg-violet-600 text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {r} {r !== "전체" && `(${myCards.filter((c) => c.card.rarity === r).length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* 카드 그리드 */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 max-h-72 overflow-y-auto pr-1">
+          {filteredCards.map((c) => {
+            const isSelected = c.userCardId === selectedId;
+            return (
+              <button
+                key={c.userCardId}
+                onClick={() => handleSelect(c.userCardId)}
+                className={`relative rounded-xl overflow-hidden aspect-[2/3] transition-all focus:outline-none ${
+                  isSelected
+                    ? "ring-2 ring-violet-500 ring-offset-1 scale-[1.03] shadow-lg shadow-violet-200"
+                    : "hover:scale-[1.02] hover:shadow-md opacity-80 hover:opacity-100"
+                }`}
+              >
+                {c.card.image_url ? (
+                  <img src={c.card.image_url} alt={c.card.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-br ${RARITY_FALLBACK[c.card.rarity] ?? "from-gray-300 to-gray-400"}`} />
+                )}
+                {/* 오버레이 */}
+                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-1 inset-x-1">
+                  <span className={`text-[8px] px-1 py-0.5 rounded-full font-bold ${RARITY_BADGE[c.card.rarity] ?? "bg-gray-100 text-gray-600"}`}>
+                    {c.card.rarity}
+                  </span>
+                  <p className="text-white text-[9px] font-semibold mt-0.5 line-clamp-2 leading-tight">{c.card.name}</p>
+                </div>
+                {/* 선택 체크 */}
+                {isSelected && (
+                  <div className="absolute top-1 right-1 w-5 h-5 bg-violet-600 rounded-full flex items-center justify-center shadow">
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {filteredCards.length === 0 && (
+          <div className="text-center py-6 text-sm text-gray-400">해당 등급의 카드가 없어요</div>
+        )}
+      </div>
+
+      {/* 선택된 카드 상세 + 액션 */}
+      {selected && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+          {/* 선택 카드 요약 */}
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <div className="w-12 h-16 rounded-lg overflow-hidden shrink-0 shadow-sm">
               {selected.card.image_url ? (
@@ -388,10 +450,8 @@ function SellTab({
               )}
             </div>
           </div>
-        )}
 
-        {/* 시세 차트 */}
-        {selected && (
+          {/* 시세 차트 */}
           <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
             {loadingHistory ? (
               <div className="h-20 flex items-center justify-center">
@@ -401,114 +461,111 @@ function SellTab({
               <PriceChart history={priceHistory} chartId={selected.card.id} />
             )}
           </div>
-        )}
 
-        {/* ── 마켓 판매 모드 ── */}
-        {mode === "market" && (
-          <>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">판매 가격 (코인)</label>
-              <div className="relative">
-                <input
-                  type="number" min="1" step="1" value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 pr-8"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">C</span>
-              </div>
-              {pricePct !== null && selected && (
-                <p className={`text-xs mt-1.5 font-medium ${
-                  pricePct > 10 ? "text-orange-500" :
-                  pricePct < -10 ? "text-blue-500" :
-                  "text-green-600"
-                }`}>
-                  {pricePct > 0 ? `시세보다 ${pricePct}% 높음` :
-                   pricePct < 0 ? `시세보다 ${Math.abs(pricePct)}% 낮음` :
-                   "시세와 동일"}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleMarketSell}
-              disabled={isPending || !selectedId || !price || priceNum <= 0}
-              className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
-            >
-              {isPending ? "등록 중..." : "판매 등록"}
-            </button>
-          </>
-        )}
-
-        {/* ── 즉시 판매 모드 ── */}
-        {mode === "instant" && (
-          <>
-            {selected ? (
-              <div className="space-y-3">
-                {/* 가격 정보 박스 */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2.5">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">현재 시세</span>
-                    <span className="font-semibold text-gray-900">
-                      {marketPrice > 0 ? `${marketPrice.toLocaleString()} C` : "미정"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">즉시판매가 <span className="text-amber-600 font-medium">(85%)</span></span>
-                    <span className="text-lg font-bold text-amber-700">
-                      {instantPrice > 0 ? `${instantPrice.toLocaleString()} C` : "미정"}
-                    </span>
-                  </div>
-                  {marketPrice > 0 && (
-                    <div className="border-t border-amber-200 pt-2">
-                      <p className="text-xs text-amber-600 leading-relaxed">
-                        구매자를 기다리지 않고 즉시 코인화할 수 있지만, 시세보다{" "}
-                        <span className="font-semibold">{marketPrice - instantPrice > 0 ? (marketPrice - instantPrice).toLocaleString() : 0} C</span>{" "}
-                        낮은 가격입니다. 또한 판매 후 해당 카드의 시세가 소폭 하락합니다.
-                      </p>
-                    </div>
-                  )}
+          {/* ── 마켓 판매 모드 ── */}
+          {mode === "market" && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">판매 가격 (코인)</label>
+                <div className="relative">
+                  <input
+                    type="number" min="1" step="1" value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">C</span>
                 </div>
-
-                {confirming ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-center text-gray-700 font-medium py-1">
-                      <span className="font-bold text-amber-600">{instantPrice.toLocaleString()} C</span>에 즉시 판매하시겠어요?
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleInstantSell}
-                        disabled={isPending}
-                        className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors"
-                      >
-                        {isPending ? "처리 중..." : "확인"}
-                      </button>
-                      <button
-                        onClick={() => setConfirming(false)}
-                        disabled={isPending}
-                        className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirming(true)}
-                    disabled={!selectedId || instantPrice <= 0}
-                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
-                  >
-                    즉시 판매
-                  </button>
+                {pricePct !== null && (
+                  <p className={`text-xs mt-1.5 font-medium ${
+                    pricePct > 10 ? "text-orange-500" :
+                    pricePct < -10 ? "text-blue-500" :
+                    "text-green-600"
+                  }`}>
+                    {pricePct > 0 ? `시세보다 ${pricePct}% 높음` :
+                     pricePct < 0 ? `시세보다 ${Math.abs(pricePct)}% 낮음` :
+                     "시세와 동일"}
+                  </p>
                 )}
               </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-5 text-center">
-                <p className="text-sm text-gray-400">카드를 선택하면 즉시판매가를 확인할 수 있어요</p>
+              <button
+                onClick={handleMarketSell}
+                disabled={isPending || !price || priceNum <= 0}
+                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
+              >
+                {isPending ? "등록 중..." : "판매 등록"}
+              </button>
+            </>
+          )}
+
+          {/* ── 즉시 판매 모드 ── */}
+          {mode === "instant" && (
+            <div className="space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2.5">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">현재 시세</span>
+                  <span className="font-semibold text-gray-900">
+                    {marketPrice > 0 ? `${marketPrice.toLocaleString()} C` : "미정"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">즉시판매가 <span className="text-amber-600 font-medium">(85%)</span></span>
+                  <span className="text-lg font-bold text-amber-700">
+                    {instantPrice > 0 ? `${instantPrice.toLocaleString()} C` : "미정"}
+                  </span>
+                </div>
+                {marketPrice > 0 && (
+                  <div className="border-t border-amber-200 pt-2">
+                    <p className="text-xs text-amber-600 leading-relaxed">
+                      구매자를 기다리지 않고 즉시 코인화할 수 있지만, 시세보다{" "}
+                      <span className="font-semibold">{(marketPrice - instantPrice).toLocaleString()} C</span>{" "}
+                      낮은 가격입니다. 판매 후 해당 카드의 시세가 소폭 하락합니다.
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {confirming ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-center text-gray-700 font-medium py-1">
+                    <span className="font-bold text-amber-600">{instantPrice.toLocaleString()} C</span>에 즉시 판매하시겠어요?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleInstantSell}
+                      disabled={isPending}
+                      className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors"
+                    >
+                      {isPending ? "처리 중..." : "확인"}
+                    </button>
+                    <button
+                      onClick={() => setConfirming(false)}
+                      disabled={isPending}
+                      className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirming(true)}
+                  disabled={instantPrice <= 0}
+                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
+                >
+                  즉시 판매
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!selected && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+          <p className="text-sm text-gray-400">위에서 카드를 선택하면 판매 옵션이 표시됩니다</p>
+        </div>
+      )}
     </div>
   );
 }

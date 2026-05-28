@@ -162,81 +162,22 @@ export default function CardCollection({
 }
 
 function CardModal({ oc, onClose }: { oc: OwnedCard; onClose: () => void }) {
-  const { card, count } = oc;
+  const { card } = oc;
   const fallbackGradient = RARITY_FALLBACK[card.rarity] ?? "from-gray-300 to-gray-400";
-  const badgeCls = RARITY_BADGE[card.rarity] ?? "bg-gray-100 text-gray-600";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-zoom-out"
       onClick={onClose}
     >
-      <div
-        className="relative flex flex-col sm:flex-row gap-6 bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 닫기 버튼 */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-sm"
-        >
-          ✕
-        </button>
-
-        {/* 카드 이미지 */}
-        <div className="w-full sm:w-44 shrink-0">
-          <div className="aspect-[2/3] rounded-2xl overflow-hidden shadow-lg">
-            {card.image_url ? (
-              <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className={`w-full h-full bg-gradient-to-br ${fallbackGradient} flex items-center justify-center`}>
-                <span className="text-white text-4xl font-black opacity-60">{card.rarity}</span>
-              </div>
-            )}
+      <div className="relative max-h-[90vh] aspect-[2/3]" onClick={(e) => e.stopPropagation()}>
+        {card.image_url ? (
+          <img src={card.image_url} alt={card.name} className="h-full w-full object-cover rounded-2xl shadow-2xl" />
+        ) : (
+          <div className={`h-full w-full bg-gradient-to-br ${fallbackGradient} rounded-2xl flex items-center justify-center`}>
+            <span className="text-white text-6xl font-black opacity-60">{card.rarity}</span>
           </div>
-        </div>
-
-        {/* 카드 정보 */}
-        <div className="flex-1 flex flex-col gap-3 pt-1">
-          <div>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${badgeCls}`}>
-              {card.rarity}
-            </span>
-            <h2 className="text-xl font-bold text-gray-900 mt-2 leading-tight">{card.name}</h2>
-          </div>
-
-          <div className="space-y-1.5 text-sm">
-            {card.card_type && (
-              <div className="flex justify-between text-gray-500">
-                <span>타입</span>
-                <span className="font-medium text-gray-800 capitalize">{card.card_type}</span>
-              </div>
-            )}
-            {card.series && (
-              <div className="flex justify-between text-gray-500">
-                <span>시리즈</span>
-                <span className="font-medium text-gray-800">{card.series}</span>
-              </div>
-            )}
-            {card.card_number && (
-              <div className="flex justify-between text-gray-500">
-                <span>카드 번호</span>
-                <span className="font-medium text-gray-800">{card.card_number}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-gray-500">
-              <span>보유 수량</span>
-              <span className="font-bold text-gray-900">×{count}</span>
-            </div>
-          </div>
-
-          {card.current_price > 0 && (
-            <div className="mt-auto pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-400 mb-0.5">현재 시세</p>
-              <p className="text-2xl font-bold text-violet-600">{card.current_price.toLocaleString()} C</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

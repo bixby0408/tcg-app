@@ -21,9 +21,8 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const err = params.get("error");
     if (err) {
-      setError(ERROR_MESSAGES[err] ?? `오류 코드: ${err}`);
-      // 에러 코드를 콘솔에도 출력해서 디버깅 쉽게
-      console.error("[Naver OAuth Error]", err);
+      const desc = params.get("error_description");
+      setError(ERROR_MESSAGES[err] ?? (desc ? decodeURIComponent(desc.replace(/\+/g, " ")) : `오류 코드: ${err}`));
     }
   }, []);
 

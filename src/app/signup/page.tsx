@@ -4,6 +4,46 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+const PRIVACY_POLICY = `개인정보처리방침
+
+본 사이트(이하 "회사")는 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다. 회사는 회원가입 및 서비스 제공을 위해 최소한의 개인정보를 수집하며, 아래와 같이 개인정보처리방침을 안내합니다.
+
+1. 수집하는 개인정보 항목
+
+회사는 회원가입 및 서비스 이용 과정에서 아래의 개인정보를 수집할 수 있습니다.
+• 이메일
+• 비밀번호(암호화 저장)
+
+2. 개인정보의 수집 및 이용 목적
+
+회사는 수집한 개인정보를 아래 목적에 한하여 사용합니다.
+• 회원 식별 및 로그인
+• 서비스 운영 및 관리
+
+수집된 개인정보는 위 목적 외 용도로 사용되지 않으며, 이용자의 동의 없이 외부에 제공되지 않습니다.
+
+3. 개인정보의 보관 및 이용 기간
+
+회사는 이용자의 개인정보를 서비스 운영 기간 동안 보관하며, 사이트 폐쇄 시 관련 법령에 따라 처리 후 안전하게 파기합니다.
+
+4. 개인정보의 제3자 제공
+
+회사는 이용자의 개인정보를 외부에 제공하지 않습니다. 다만, 관련 법령에 따른 요청이 있는 경우에는 예외로 할 수 있습니다.
+
+5. 개인정보의 보호
+
+회사는 이용자의 개인정보 보호를 위해 비밀번호 암호화 등 안전성 확보 조치를 적용하고 있습니다.
+
+6. 이용자의 권리
+
+이용자는 언제든지 자신의 개인정보에 대한 조회, 수정, 삭제를 요청할 수 있습니다.
+
+7. 개인정보처리방침의 변경
+
+본 개인정보처리방침은 관련 법령 및 서비스 정책에 따라 변경될 수 있으며, 변경 시 사이트를 통해 공지합니다.
+
+시행일: 2026년 5월 28일`;
+
 export default function SignupPage() {
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
@@ -11,6 +51,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,6 +80,10 @@ export default function SignupPage() {
   }
 
   async function handleOAuth(provider: "google" | "kakao") {
+    if (!agreed) {
+      setError("개인정보처리방침에 동의해주세요.");
+      return;
+    }
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -170,6 +216,26 @@ export default function SignupPage() {
               />
             </div>
 
+            {/* 개인정보처리방침 동의 */}
+            <label className="flex items-start gap-2.5 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-violet-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="text-xs text-gray-400 leading-relaxed">
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacy(true)}
+                  className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors"
+                >
+                  개인정보처리방침
+                </button>
+                에 동의합니다 <span className="text-red-400">*</span>
+              </span>
+            </label>
+
             {error && (
               <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl px-3.5 py-2.5">
                 <span>⚠</span>
@@ -179,7 +245,7 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreed}
               className="w-full py-2.5 px-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-violet-900/30"
             >
               {loading ? "가입 중..." : "회원가입"}
@@ -195,6 +261,40 @@ export default function SignupPage() {
           </Link>
         </p>
       </div>
+
+      {/* 개인정보처리방침 모달 */}
+      {showPrivacy && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowPrivacy(false)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-[#12121e] border border-white/10 rounded-2xl flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h2 className="text-base font-bold text-white">개인정보처리방침</h2>
+              <button
+                onClick={() => setShowPrivacy(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-5 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap flex-1">
+              {PRIVACY_POLICY}
+            </div>
+            <div className="px-6 py-4 border-t border-white/10">
+              <button
+                onClick={() => { setAgreed(true); setShowPrivacy(false); }}
+                className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm transition-colors"
+              >
+                동의하고 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

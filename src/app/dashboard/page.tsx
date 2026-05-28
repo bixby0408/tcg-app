@@ -50,6 +50,8 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  if (!profile?.nickname) redirect("/setup-profile");
+
   const displayName = profile?.nickname || user.email?.split("@")[0] || "플레이어";
   const balance = profile?.balance ?? 0;
   const totalCards = userCards?.length ?? 0;

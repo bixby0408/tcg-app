@@ -63,9 +63,9 @@ const RARITY_GLOW: Record<Rarity, string> = {
 type Phase =
   | { type: "list" }
   | { type: "loading"; packName: string }
-  | { type: "reveal"; cards: PulledCard[]; currentIndex: number; flipped: boolean }
-  | { type: "ar-reveal"; cards: PulledCard[]; currentIndex: number }
-  | { type: "done"; cards: PulledCard[] };
+  | { type: "reveal"; cards: PulledCard[]; currentIndex: number; flipped: boolean; pack: Pack }
+  | { type: "ar-reveal"; cards: PulledCard[]; currentIndex: number; pack: Pack }
+  | { type: "done"; cards: PulledCard[]; pack: Pack };
 
 type AnimConfig = { name: string; duration: string; easing: string };
 
@@ -141,14 +141,14 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
       return;
     }
 
-    setPhase({ type: "reveal", cards: result.cards, currentIndex: 0, flipped: false });
+    setPhase({ type: "reveal", cards: result.cards, currentIndex: 0, flipped: false, pack });
   }
 
   function flipCurrent() {
     if (phase.type !== "reveal" || phase.flipped) return;
     const rarity = phase.cards[phase.currentIndex].card.rarity;
     if (rarity === "AR") {
-      setPhase({ type: "ar-reveal", cards: phase.cards, currentIndex: phase.currentIndex });
+      setPhase({ type: "ar-reveal", cards: phase.cards, currentIndex: phase.currentIndex, pack: phase.pack });
       return;
     }
     triggerFlash(rarity);
@@ -159,11 +159,11 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
     if (phase.type !== "ar-reveal") return;
     const next = phase.currentIndex + 1;
     if (next >= phase.cards.length) {
-      setPhase({ type: "done", cards: phase.cards });
+      setPhase({ type: "done", cards: phase.cards, pack: phase.pack });
     } else {
       const rarity = phase.cards[next].card.rarity;
       triggerFlash(rarity);
-      setPhase({ type: "reveal", cards: phase.cards, currentIndex: next, flipped: true });
+      setPhase({ type: "reveal", cards: phase.cards, currentIndex: next, flipped: true, pack: phase.pack });
     }
   }
 
@@ -171,7 +171,7 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
     if (phase.type !== "reveal") return;
     const next = phase.currentIndex + 1;
     if (next >= phase.cards.length) {
-      setPhase({ type: "done", cards: phase.cards });
+      setPhase({ type: "done", cards: phase.cards, pack: phase.pack });
     } else {
       const rarity = phase.cards[next].card.rarity;
       triggerFlash(rarity);
@@ -180,8 +180,8 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
   }
 
   function skipAll() {
-    if (phase.type === "reveal") setPhase({ type: "done", cards: phase.cards });
-    else if (phase.type === "ar-reveal") setPhase({ type: "done", cards: phase.cards });
+    if (phase.type === "reveal") setPhase({ type: "done", cards: phase.cards, pack: phase.pack });
+    else if (phase.type === "ar-reveal") setPhase({ type: "done", cards: phase.cards, pack: phase.pack });
   }
 
   /* ── 로딩 ── */
@@ -325,12 +325,20 @@ export default function PackList({ packs, balance }: { packs: Pack[]; balance: n
           </div>
         </div>
 
-        <button
-          onClick={() => setPhase({ type: "list" })}
-          className="px-7 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-2xl transition-colors"
-        >
-          팩 목록으로
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleBuy(phase.pack)}
+            className="px-7 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-2xl transition-colors shadow-lg shadow-violet-900/40"
+          >
+            🎴 다시 뽑기
+          </button>
+          <button
+            onClick={() => setPhase({ type: "list" })}
+            className="px-7 py-3 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold rounded-2xl border border-white/10 transition-colors"
+          >
+            팩 목록으로
+          </button>
+        </div>
       </div>
     );
   }
@@ -568,92 +576,155 @@ function ARRevealAnimation({ pulled, onDone }: { pulled: PulledCard; onDone: () 
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black">
+    <div className="fixed inset-0 z-50 bg-black" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
       <style>{AR_KEYFRAMES}</style>
 
-      {/* 배경 앰비언트 글로우 */}
-      <div className="absolute inset-0 transition-opacity duration-1000 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at center, rgba(34,211,238,0.12) 0%, transparent 70%)", opacity: scene === "leak" || scene === "confirm" ? 1 : 0 }} />
-      <div className="absolute inset-0 transition-opacity duration-1000 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at center, rgba(244,63,94,0.18) 0%, transparent 65%)", opacity: scene === "reveal" || scene === "done" ? 1 : 0 }} />
+      {/* 배경 앰비언트 글로우 — absolute로 화면 전체 덮음 */}
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+        style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.13) 0%, transparent 65%)", opacity: scene === "leak" || scene === "confirm" ? 1 : 0 }} />
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+        style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(244,63,94,0.18) 0%, transparent 60%)", opacity: scene === "reveal" || scene === "done" ? 1 : 0 }} />
 
-      {/* ── Scene 1 & 2: 팩 등장 + 빛 새어나옴 ── */}
+      {/* ── Scene 1 & 2: 팩 등장 ── */}
       {(scene === "pack" || scene === "leak") && (
-        <div className="relative flex items-center justify-center">
+        <>
+          {/* 파티클 — fixed 컨테이너(전체 화면) 기준으로 absolute */}
+          {scene === "leak" && AR_PARTICLES.map((p, i) => (
+            <div key={i} className="absolute rounded-full pointer-events-none"
+              style={{
+                width: p.size, height: p.size,
+                background: p.color,
+                left: `calc(50% + ${p.x}px)`,
+                top:  `calc(50% + ${p.y}px)`,
+                boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+                animation: `arGlowPulse 0.55s ease-in-out ${p.delay}s infinite`,
+              }}
+            />
+          ))}
+
+          {/* 팩 본체 */}
           <div className="relative w-40 h-52 rounded-2xl flex items-center justify-center select-none"
             style={{
-              background: "linear-gradient(135deg, #4c1d95 0%, #1e1b4b 50%, #0c0a1a 100%)",
+              background: "linear-gradient(135deg,#4c1d95 0%,#1e1b4b 50%,#0c0a1a 100%)",
               border: "1px solid rgba(139,92,246,0.4)",
-              animation: scene === "pack" ? "arPackDrop 0.85s cubic-bezier(0.34,1.3,0.64,1) both" : "arPackShake 0.45s ease-in-out infinite",
-              boxShadow: scene === "leak" ? "0 0 40px rgba(34,211,238,0.5), 0 0 80px rgba(139,92,246,0.3)" : "0 0 20px rgba(139,92,246,0.3)",
+              animation: scene === "pack"
+                ? "arPackDrop 0.85s cubic-bezier(0.34,1.3,0.64,1) both"
+                : "arPackShake 0.45s ease-in-out infinite",
+              boxShadow: scene === "leak"
+                ? "0 0 40px rgba(34,211,238,0.55),0 0 80px rgba(139,92,246,0.35)"
+                : "0 0 20px rgba(139,92,246,0.3)",
             }}
           >
             <div className="text-center">
               <div className="text-5xl opacity-25">🃏</div>
               <p className="text-violet-400/30 text-xs font-black tracking-widest mt-2">TCG</p>
             </div>
+
+            {/* 빛 새어나옴 */}
             {scene === "leak" && (
               <>
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 h-px rounded-full" style={{ width: "65%", background: "linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)", animation: "arLeak 0.25s ease-out both", boxShadow: "0 0 14px rgba(34,211,238,0.9)" }} />
-                <div className="absolute -bottom-px left-1/2 -translate-x-1/2 h-px rounded-full" style={{ width: "65%", background: "linear-gradient(90deg,transparent,rgba(139,92,246,0.95),transparent)", animation: "arLeak 0.25s ease-out 0.1s both", boxShadow: "0 0 14px rgba(139,92,246,0.9)" }} />
-                <div className="absolute -left-px top-1/2 -translate-y-1/2 w-px rounded-full"  style={{ height: "40%", background: "linear-gradient(180deg,transparent,rgba(244,63,94,0.9),transparent)", animation: "arLeak 0.25s ease-out 0.15s both", boxShadow: "0 0 12px rgba(244,63,94,0.8)" }} />
-                <div className="absolute -right-px top-1/2 -translate-y-1/2 w-px rounded-full" style={{ height: "40%", background: "linear-gradient(180deg,transparent,rgba(34,211,238,0.7),transparent)", animation: "arLeak 0.25s ease-out 0.2s both", boxShadow: "0 0 12px rgba(34,211,238,0.7)" }} />
+                <div className="absolute -top-px left-1/2 -translate-x-1/2 h-px rounded-full"
+                  style={{ width: "65%", background: "linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)", animation: "arLeak 0.25s ease-out both", boxShadow: "0 0 14px rgba(34,211,238,0.9)" }} />
+                <div className="absolute -bottom-px left-1/2 -translate-x-1/2 h-px rounded-full"
+                  style={{ width: "65%", background: "linear-gradient(90deg,transparent,rgba(139,92,246,0.95),transparent)", animation: "arLeak 0.25s ease-out 0.1s both", boxShadow: "0 0 14px rgba(139,92,246,0.9)" }} />
+                <div className="absolute top-1/2 -translate-y-1/2 -left-px w-px rounded-full"
+                  style={{ height: "40%", background: "linear-gradient(180deg,transparent,rgba(244,63,94,0.9),transparent)", animation: "arLeak 0.25s ease-out 0.15s both", boxShadow: "0 0 12px rgba(244,63,94,0.8)" }} />
+                <div className="absolute top-1/2 -translate-y-1/2 -right-px w-px rounded-full"
+                  style={{ height: "40%", background: "linear-gradient(180deg,transparent,rgba(34,211,238,0.7),transparent)", animation: "arLeak 0.25s ease-out 0.2s both", boxShadow: "0 0 12px rgba(34,211,238,0.7)" }} />
+                {/* shine sweep */}
                 <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                  <div style={{ position: "absolute", inset: 0, width: "45%", height: "100%", background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)", animation: "arShine 0.9s ease-in-out 0.2s both" }} />
+                  <div style={{ position: "absolute", top: 0, bottom: 0, width: "45%", background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)", animation: "arShine 0.9s ease-in-out 0.2s both" }} />
                 </div>
               </>
             )}
           </div>
-          {scene === "leak" && AR_PARTICLES.map((p, i) => (
-            <div key={i} className="absolute rounded-full pointer-events-none"
-              style={{ width: p.size, height: p.size, background: p.color, left: `calc(50% + ${p.x}px)`, top: `calc(50% + ${p.y}px)`, boxShadow: `0 0 ${p.size * 3}px ${p.color}`, animation: `arGlowPulse 0.55s ease-in-out ${p.delay}s infinite` }}
-            />
-          ))}
-        </div>
+        </>
       )}
 
       {/* ── Scene 3: AR 확정 ── */}
       {scene === "confirm" && (
-        <div className="relative flex flex-col items-center gap-5">
-          {[0, 0.18, 0.36].map((delay, i) => (
-            <div key={i} className="absolute w-28 h-28 rounded-full border border-cyan-400/70"
-              style={{ animation: `arRing 1.1s ease-out ${delay}s both` }} />
+        <div className="flex flex-col items-center gap-5" style={{ position: "relative" }}>
+          {/* 링 파동 3개 — absolute로 텍스트 중심에 겹침 */}
+          {[0, 0.2, 0.4].map((delay, i) => (
+            <div key={i} style={{
+              position: "absolute",
+              width: 120, height: 120,
+              borderRadius: "50%",
+              border: "1px solid rgba(34,211,238,0.7)",
+              top: "50%", left: "50%",
+              transform: "translate(-50%,-50%)",
+              animation: `arRing 1.1s ease-out ${delay}s both`,
+            }} />
           ))}
-          <div style={{ fontSize: "5.5rem", fontWeight: 100, letterSpacing: "0.35em", color: "rgba(34,211,238,0.95)", textShadow: "0 0 20px rgba(34,211,238,0.9), 0 0 60px rgba(34,211,238,0.5), 0 0 120px rgba(139,92,246,0.4)", animation: "arTextBurst 0.65s cubic-bezier(0.34,1.5,0.64,1) both" }}>
+          {/* AR 네온 텍스트 */}
+          <div style={{
+            fontSize: "5.5rem", fontWeight: 100,
+            letterSpacing: "0.35em", lineHeight: 1,
+            color: "rgba(34,211,238,0.95)",
+            textShadow: "0 0 20px rgba(34,211,238,0.9),0 0 60px rgba(34,211,238,0.5),0 0 120px rgba(139,92,246,0.4)",
+            animation: "arTextBurst 0.65s cubic-bezier(0.34,1.5,0.64,1) both",
+          }}>
             AR
           </div>
-          <div className="w-20 h-28 rounded-xl opacity-40" style={{ background: "linear-gradient(135deg,rgba(244,63,94,0.25),rgba(139,92,246,0.25))", border: "1px solid rgba(244,63,94,0.4)", backdropFilter: "blur(6px)" }} />
+          {/* 카드 실루엣 */}
+          <div style={{
+            width: 80, height: 112, borderRadius: 12, opacity: 0.45,
+            background: "linear-gradient(135deg,rgba(244,63,94,0.3),rgba(139,92,246,0.3))",
+            border: "1px solid rgba(244,63,94,0.5)",
+            backdropFilter: "blur(6px)",
+          }} />
         </div>
       )}
 
       {/* ── Scene 4 & 5: 카드 공개 + 완료 ── */}
       {(scene === "reveal" || scene === "done") && (
-        <div className="flex flex-col items-center gap-8">
-          <div className="relative" style={{ width: 260, height: 364, perspective: "1000px", animation: scene === "reveal" ? "arCardReveal 1.3s cubic-bezier(0.34,1.4,0.64,1) both" : undefined }}>
-            <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ boxShadow: "0 0 30px rgba(244,63,94,0.65), 0 0 70px rgba(244,63,94,0.3), 0 0 120px rgba(139,92,246,0.2)", animation: "arGlowPulse 2s ease-in-out infinite" }} />
-            <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl">
-              {card.image_url ? (
-                <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className={`w-full h-full bg-gradient-to-br ${typeStyle.bg} flex flex-col`}>
-                  <div className="flex-1 flex items-center justify-center"><span className="text-8xl">{typeStyle.emoji}</span></div>
-                  <div className="px-5 pb-5">
-                    <p className="text-white font-black text-xl leading-tight">{card.name}</p>
-                    <p className="text-white/60 text-sm mt-0.5">AR ✦</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}>
+          {/* perspective는 부모에, animation은 자식에 */}
+          <div style={{ perspective: "1200px" }}>
+            <div style={{
+              position: "relative", width: 260, height: 364,
+              animation: scene === "reveal" ? "arCardReveal 1.3s cubic-bezier(0.34,1.4,0.64,1) both" : undefined,
+            }}>
+              {/* 엣지 글로우 */}
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: 24, pointerEvents: "none",
+                boxShadow: "0 0 30px rgba(244,63,94,0.65),0 0 70px rgba(244,63,94,0.3),0 0 120px rgba(139,92,246,0.2)",
+                animation: "arGlowPulse 2s ease-in-out infinite",
+              }} />
+              {/* 카드 본체 */}
+              <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: 24, overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.8)" }}>
+                {card.image_url ? (
+                  <img src={card.image_url} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-br ${typeStyle.bg}`} style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: "5rem" }}>{typeStyle.emoji}</span>
+                    </div>
+                    <div style={{ padding: "0 20px 20px" }}>
+                      <p style={{ color: "white", fontWeight: 900, fontSize: "1.25rem" }}>{card.name}</p>
+                      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.875rem", marginTop: 2 }}>AR ✦</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {scene === "reveal" && (
-                <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-                  <div style={{ position: "absolute", top: "-20%", width: "55%", height: "140%", background: "linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.28) 50%,transparent 65%)", animation: "arHologram 1.5s ease-in-out 0.4s both" }} />
-                </div>
-              )}
+                )}
+                {/* 홀로그램 shine */}
+                {scene === "reveal" && (
+                  <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 24, pointerEvents: "none" }}>
+                    <div style={{
+                      position: "absolute", top: "-20%", width: "55%", height: "140%",
+                      background: "linear-gradient(105deg,transparent 35%,rgba(255,255,255,0.3) 50%,transparent 65%)",
+                      animation: "arHologram 1.5s ease-in-out 0.5s both",
+                    }} />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* 완료 버튼 */}
           {scene === "done" && (
             <button onClick={onDone}
-              className="px-9 py-3 bg-rose-500 hover:bg-rose-400 text-white font-semibold rounded-2xl transition-colors shadow-lg shadow-rose-900/40 text-sm"
-              style={{ animation: "arButtonSlide 0.4s ease-out both" }}
+              className="px-9 py-3 bg-rose-500 hover:bg-rose-400 text-white font-semibold rounded-2xl transition-colors"
+              style={{ animation: "arButtonSlide 0.4s ease-out both", boxShadow: "0 8px 30px rgba(244,63,94,0.4)" }}
             >
               확인 →
             </button>
@@ -661,6 +732,7 @@ function ARRevealAnimation({ pulled, onDone }: { pulled: PulledCard; onDone: () 
         </div>
       )}
 
+      {/* 건너뛰기 */}
       {scene !== "done" && (
         <button onClick={onDone} className="absolute bottom-8 right-8 text-xs text-white/25 hover:text-white/50 transition-colors">
           건너뛰기

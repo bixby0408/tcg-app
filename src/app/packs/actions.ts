@@ -58,6 +58,16 @@ export async function buyPack(packId: string): Promise<BuyPackResult> {
 
   if (!pack?.is_active) return { success: false, error: "존재하지 않는 팩입니다" };
 
+  // 카드 보유 수 확인 (1000장 제한)
+  const { count: cardCount } = await supabase
+    .from("user_cards")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if ((cardCount ?? 0) >= 1000) {
+    return { success: false, error: "카드 보유 한도(1000장)에 도달했습니다. 카드를 판매하거나 정리한 후 뽑기가 가능합니다." };
+  }
+
   // 잔액 확인
   const { data: profile } = await supabase
     .from("profiles")

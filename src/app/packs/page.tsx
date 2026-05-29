@@ -10,10 +10,13 @@ export default async function PacksPage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: packs }, { data: profile }] = await Promise.all([
+  const [{ data: packs }, { data: profile }, { count: cardCount }] = await Promise.all([
     supabase.from("packs").select("*").eq("is_active", true).order("created_at"),
     supabase.from("profiles").select("balance").eq("id", user.id).single(),
+    supabase.from("user_cards").select("*", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
+
+  const totalCards = cardCount ?? 0;
 
   return (
     <div className="min-h-screen bg-[#07070f]">
@@ -31,7 +34,7 @@ export default async function PacksPage() {
           </div>
         </div>
 
-        <PackList packs={(packs ?? []) as any} balance={profile?.balance ?? 0} />
+        <PackList packs={(packs ?? []) as any} balance={profile?.balance ?? 0} cardCount={totalCards} />
       </main>
     </div>
   );

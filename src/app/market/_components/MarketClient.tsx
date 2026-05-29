@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Listing, MyCard } from "../page";
-import { buyCard, cancelListing, listCard, instantSellCard, getCardPriceHistory } from "../actions";
+import { buyCard, cancelListing, listCard, getCardPriceHistory } from "../actions";
 import PriceChart from "./PriceChart";
 
 const RARITIES = ["전체", "N", "R", "RR", "AR", "SR", "SAR", "UR", "MUR"] as const;
@@ -254,10 +254,8 @@ function SellTab({
   onMsg: (type: "error" | "success", text: string) => void;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState<"market" | "instant">("market");
   const [selectedId, setSelectedId] = useState("");
   const [price, setPrice] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [priceHistory, setPriceHistory] = useState<Array<{ price: number; transaction_type: "market_buy" | "instant_sell"; created_at: string }>>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -276,7 +274,6 @@ function SellTab({
   }, [selected?.card.id]);
 
   const marketPrice = selected?.card.current_price ?? 0;
-  const instantPrice = marketPrice > 0 ? Math.floor(marketPrice * 0.85) : 0;
   const priceNum = Number(price);
   const pricePct = marketPrice > 0 && priceNum > 0
     ? Math.round(((priceNum - marketPrice) / marketPrice) * 100)
@@ -289,7 +286,6 @@ function SellTab({
 
   function handleSelect(id: string) {
     setSelectedId((prev) => prev === id ? "" : id);
-    setConfirming(false);
     setPrice("");
   }
 
@@ -301,18 +297,6 @@ function SellTab({
       else {
         onMsg("success", "판매 등록이 완료됐어요!");
         setSelectedId(""); setPrice("");
-        router.refresh(); onDone();
-      }
-    });
-  }
-
-  function handleInstantSell() {
-    startTransition(async () => {
-      const res = await instantSellCard(selectedId);
-      if (res.error) { onMsg("error", res.error); setConfirming(false); }
-      else {
-        onMsg("success", `${res.sell_price?.toLocaleString()} C에 즉시 판매했어요!`);
-        setSelectedId(""); setConfirming(false);
         router.refresh(); onDone();
       }
     });
@@ -330,26 +314,6 @@ function SellTab({
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      {/* 모드 토글 */}
-      <div className="flex gap-1 bg-gray-100 rounded-2xl p-1">
-        <button
-          onClick={() => { setMode("market"); setConfirming(false); }}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            mode === "market" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          마켓 판매
-        </button>
-        <button
-          onClick={() => { setMode("instant"); setPrice(""); setConfirming(false); }}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            mode === "instant" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          즉시 판매 <span className="text-xs font-normal opacity-60">(시세 85%)</span>
-        </button>
-      </div>
-
       {/* 카드 선택 그리드 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-3">
@@ -462,102 +426,37 @@ function SellTab({
             )}
           </div>
 
-          {/* ── 마켓 판매 모드 ── */}
-          {mode === "market" && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">판매 가격 (코인)</label>
-                <div className="relative">
-                  <input
-                    type="number" min="1" step="1" value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">C</span>
-                </div>
-                {pricePct !== null && (
-                  <p className={`text-xs mt-1.5 font-medium ${
-                    pricePct > 10 ? "text-orange-500" :
-                    pricePct < -10 ? "text-blue-500" :
-                    "text-green-600"
-                  }`}>
-                    {pricePct > 0 ? `시세보다 ${pricePct}% 높음` :
-                     pricePct < 0 ? `시세보다 ${Math.abs(pricePct)}% 낮음` :
-                     "시세와 동일"}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={handleMarketSell}
-                disabled={isPending || !price || priceNum <= 0}
-                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
-              >
-                {isPending ? "등록 중..." : "판매 등록"}
-              </button>
-            </>
-          )}
-
-          {/* ── 즉시 판매 모드 ── */}
-          {mode === "instant" && (
-            <div className="space-y-3">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2.5">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">현재 시세</span>
-                  <span className="font-semibold text-gray-900">
-                    {marketPrice > 0 ? `${marketPrice.toLocaleString()} C` : "미정"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">즉시판매가 <span className="text-amber-600 font-medium">(85%)</span></span>
-                  <span className="text-lg font-bold text-amber-700">
-                    {instantPrice > 0 ? `${instantPrice.toLocaleString()} C` : "미정"}
-                  </span>
-                </div>
-                {marketPrice > 0 && (
-                  <div className="border-t border-amber-200 pt-2">
-                    <p className="text-xs text-amber-600 leading-relaxed">
-                      구매자를 기다리지 않고 즉시 코인화할 수 있지만, 시세보다{" "}
-                      <span className="font-semibold">{(marketPrice - instantPrice).toLocaleString()} C</span>{" "}
-                      낮은 가격입니다. 판매 후 해당 카드의 시세가 소폭 하락합니다.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {confirming ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-center text-gray-700 font-medium py-1">
-                    <span className="font-bold text-amber-600">{instantPrice.toLocaleString()} C</span>에 즉시 판매하시겠어요?
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleInstantSell}
-                      disabled={isPending}
-                      className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors"
-                    >
-                      {isPending ? "처리 중..." : "확인"}
-                    </button>
-                    <button
-                      onClick={() => setConfirming(false)}
-                      disabled={isPending}
-                      className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
-                    >
-                      취소
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirming(true)}
-                  disabled={instantPrice <= 0}
-                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
-                >
-                  즉시 판매
-                </button>
-              )}
+          {/* ── 마켓 판매 ── */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">판매 가격 (코인)</label>
+            <div className="relative">
+              <input
+                type="number" min="1" step="1" value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">C</span>
             </div>
-          )}
+            {pricePct !== null && (
+              <p className={`text-xs mt-1.5 font-medium ${
+                pricePct > 10 ? "text-orange-500" :
+                pricePct < -10 ? "text-blue-500" :
+                "text-green-600"
+              }`}>
+                {pricePct > 0 ? `시세보다 ${pricePct}% 높음` :
+                 pricePct < 0 ? `시세보다 ${Math.abs(pricePct)}% 낮음` :
+                 "시세와 동일"}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleMarketSell}
+            disabled={isPending || !price || priceNum <= 0}
+            className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
+          >
+            {isPending ? "등록 중..." : "판매 등록"}
+          </button>
         </div>
       )}
 

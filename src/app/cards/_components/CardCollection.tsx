@@ -297,6 +297,7 @@ function CardItem({
   const { card, count } = oc;
   const [confirming, setConfirming] = useState(false);
   const [qty, setQty] = useState(1);
+  const [qtyStr, setQtyStr] = useState("1");
   const [isPending, startTransition] = useTransition();
   const [sellResult, setSellResult] = useState<string | null>(null);
   const router = useRouter();
@@ -308,6 +309,7 @@ function CardItem({
 
   function openConfirm() {
     setQty(1);
+    setQtyStr("1");
     setSellResult(null);
     setConfirming(true);
   }
@@ -363,7 +365,21 @@ function CardItem({
         {isSelected && (
           <div className="flex items-center justify-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => onBulkQtyChange((bulkQty ?? 1) - 1)} className="w-5 h-5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">−</button>
-            <span className="text-xs font-semibold text-gray-700 min-w-[20px] text-center">{bulkQty}</span>
+            <input
+              type="number"
+              min={1}
+              max={count}
+              value={bulkQty ?? 1}
+              onChange={(e) => {
+                const n = parseInt(e.target.value);
+                if (!isNaN(n) && n >= 1) onBulkQtyChange(n);
+              }}
+              onBlur={(e) => {
+                const n = parseInt(e.target.value) || 1;
+                onBulkQtyChange(n);
+              }}
+              className="w-10 text-center bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded py-0.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+            />
             <button onClick={() => onBulkQtyChange((bulkQty ?? 1) + 1)} className="w-5 h-5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">+</button>
           </div>
         )}
@@ -428,7 +444,7 @@ function CardItem({
 
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    onClick={() => { const n = Math.max(1, qty - 1); setQty(n); setQtyStr(String(n)); }}
                     disabled={isPending}
                     className="w-6 h-6 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-md transition-colors disabled:opacity-40"
                   >−</button>
@@ -436,13 +452,22 @@ function CardItem({
                     type="number"
                     min={1}
                     max={count}
-                    value={qty}
-                    onChange={(e) => setQty(Math.min(count, Math.max(1, Number(e.target.value))))}
+                    value={qtyStr}
+                    onChange={(e) => {
+                      setQtyStr(e.target.value);
+                      const n = parseInt(e.target.value);
+                      if (!isNaN(n) && n >= 1) setQty(Math.min(count, n));
+                    }}
+                    onBlur={() => {
+                      const n = Math.min(count, Math.max(1, parseInt(qtyStr) || 1));
+                      setQty(n);
+                      setQtyStr(String(n));
+                    }}
                     disabled={isPending}
-                    className="w-10 text-center bg-white/20 text-white text-[12px] font-bold rounded-md py-0.5 border border-white/30 focus:outline-none"
+                    className="w-14 text-center bg-white/20 text-white text-[12px] font-bold rounded-md py-0.5 border border-white/30 focus:outline-none focus:border-white/60"
                   />
                   <button
-                    onClick={() => setQty((q) => Math.min(count, q + 1))}
+                    onClick={() => { const n = Math.min(count, qty + 1); setQty(n); setQtyStr(String(n)); }}
                     disabled={isPending}
                     className="w-6 h-6 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-md transition-colors disabled:opacity-40"
                   >+</button>

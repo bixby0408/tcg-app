@@ -40,7 +40,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const response = NextResponse.redirect(`${origin}/dashboard`);
+    const raw = searchParams.get('next') ?? '/dashboard';
+    const next = raw.startsWith('/') ? raw : '/dashboard'; // open redirect 방지
+    const response = NextResponse.redirect(`${origin}${next}`);
     const supabase = makeSupabase(request, response);
     await supabase.auth.exchangeCodeForSession(code);
     return response;

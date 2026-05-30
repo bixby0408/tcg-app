@@ -110,6 +110,7 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
   const [phase, setPhase] = useState<Phase>({ type: "list" });
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [zoomedCard, setZoomedCard] = useState<PulledCard | null>(null);
   const animWrapperRef = useRef<HTMLDivElement>(null);
 
   // 카드 변경/뒤집기 시 등급별 애니메이션을 직접 재시작
@@ -429,6 +430,27 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
   if (phase.type === "done") {
     return (
       <div className="flex flex-col items-center gap-6">
+        {zoomedCard && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm cursor-zoom-out"
+            onClick={() => setZoomedCard(null)}
+          >
+            <div className="relative max-h-[90vh] aspect-[2/3]" onClick={(e) => e.stopPropagation()}>
+              {zoomedCard.card.image_url ? (
+                <img
+                  src={zoomedCard.card.image_url}
+                  alt={zoomedCard.card.name}
+                  className={`h-full w-full object-cover rounded-2xl shadow-2xl ${RARITY_GLOW[zoomedCard.card.rarity as Rarity]}`}
+                />
+              ) : (
+                <div className={`h-full w-full bg-gradient-to-br ${(TYPE_STYLE[zoomedCard.card.card_type ?? "default"] ?? TYPE_STYLE.default).bg} rounded-2xl flex items-center justify-center`}>
+                  <span className="text-white text-6xl font-black opacity-60">{zoomedCard.card.rarity}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <p className="text-gray-400 text-sm font-medium">뽑기 결과</p>
 
         {/* 카드 썸네일 그리드 */}
@@ -438,7 +460,10 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
             const typeStyle = TYPE_STYLE[pc.card.card_type ?? "default"] ?? TYPE_STYLE.default;
             return (
               <div key={pc.userCardId} className="flex flex-col items-center gap-1">
-                <div className={`relative w-20 h-[112px] rounded-xl overflow-hidden shadow-lg ${RARITY_GLOW[rarity]}`}>
+                <div
+                  className={`relative w-20 h-[112px] rounded-xl overflow-hidden shadow-lg cursor-zoom-in hover:scale-105 transition-transform duration-150 ${RARITY_GLOW[rarity]}`}
+                  onClick={() => setZoomedCard(pc)}
+                >
                   {pc.card.image_url ? (
                     <img src={pc.card.image_url} alt={pc.card.name} className="w-full h-full object-cover" />
                   ) : (

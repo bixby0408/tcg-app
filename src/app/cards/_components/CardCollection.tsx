@@ -344,13 +344,6 @@ function CardItem({
               <span className="text-white text-2xl font-black opacity-60">{card.rarity}</span>
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-2">
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${badgeCls}`}>
-              {RARITY_LABEL[card.rarity] ?? card.rarity}
-            </span>
-            <p className="text-white text-[11px] font-semibold mt-0.5 leading-tight line-clamp-2">{card.name}</p>
-          </div>
           {isSelected && (
             <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center">
               <span className="text-white text-[10px] font-bold">✓</span>
@@ -383,17 +376,29 @@ function CardItem({
             <button onClick={() => onBulkQtyChange((bulkQty ?? 1) + 1)} className="w-5 h-5 bg-gray-200 hover:bg-gray-300 rounded text-xs font-bold">+</button>
           </div>
         )}
-        <p className="text-[11px] text-center text-gray-400 mt-0.5">
-          {earnPerCard > 0 ? `${earnPerCard.toLocaleString()} C` : ""}
-        </p>
+        {/* 카드 이름 + 등급 (카드 아래) */}
+        <div className="mt-1.5 px-0.5">
+          <div className="flex items-center gap-1 justify-center">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${badgeCls}`}>
+              {RARITY_LABEL[card.rarity] ?? card.rarity}
+            </span>
+          </div>
+          <p className="text-xs font-semibold text-gray-800 text-center leading-tight line-clamp-2 mt-0.5">
+            {card.name}
+          </p>
+          {earnPerCard > 0 && (
+            <p className="text-[10px] text-center text-gray-400 mt-0.5">{earnPerCard.toLocaleString()} C</p>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="group relative cursor-default">
+      {/* 카드 이미지 */}
       <div
-        className="relative aspect-[2/3] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200 cursor-pointer"
+        className="relative aspect-[2/3] rounded-xl overflow-hidden shadow-sm group-hover:shadow-md group-hover:scale-[1.03] transition-all duration-200 cursor-pointer"
         onClick={() => { if (!confirming) onSelect(); }}
       >
         {card.image_url ? (
@@ -404,26 +409,18 @@ function CardItem({
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-2">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${badgeCls}`}>
-            {RARITY_LABEL[card.rarity] ?? card.rarity}
-          </span>
-          <p className="text-white text-[11px] font-semibold mt-0.5 leading-tight line-clamp-2">{card.name}</p>
-        </div>
-
+        {/* 수량 배지 */}
         {count > 1 && !confirming && (
           <div className="absolute top-1.5 right-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
             ×{count}
           </div>
         )}
 
-        {/* 즉시판매 버튼 (호버 시) */}
+        {/* 판매 버튼 (호버 시) */}
         {!confirming && (
           <button
             onClick={(e) => { e.stopPropagation(); openConfirm(); }}
-            className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 hover:bg-violet-600/90 text-white rounded-lg px-1.5 py-0.5 text-[10px] font-semibold"
-            title="즉시판매"
+            className="absolute inset-x-0 bottom-0 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 hover:bg-violet-700/90 text-white text-[11px] font-bold"
           >
             판매
           </button>
@@ -431,16 +428,15 @@ function CardItem({
 
         {/* 판매 확인 오버레이 */}
         {confirming && (
-          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 p-3">
+          <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center gap-2 p-3">
             {sellResult ? (
               <p className={`text-sm font-bold ${sellResult.startsWith("오류") ? "text-red-400" : "text-green-400"}`}>
                 {sellResult}
               </p>
             ) : (
               <>
-                <p className="text-white text-[11px] font-semibold text-center">즉시판매</p>
                 <p className="text-violet-300 text-[10px]">시세 {card.current_price.toLocaleString()} C</p>
-                <p className="text-amber-300 text-[11px] font-bold">→ {(earnPerCard * qty).toLocaleString()} C</p>
+                <p className="text-amber-300 text-[12px] font-bold">→ {(earnPerCard * qty).toLocaleString()} C</p>
 
                 <div className="flex items-center gap-1.5">
                   <button
@@ -464,7 +460,7 @@ function CardItem({
                       setQtyStr(String(n));
                     }}
                     disabled={isPending}
-                    className="w-14 text-center bg-white/20 text-white text-[12px] font-bold rounded-md py-0.5 border border-white/30 focus:outline-none focus:border-white/60"
+                    className="w-12 text-center bg-white/20 text-white text-[12px] font-bold rounded-md py-0.5 border border-white/30 focus:outline-none focus:border-white/60"
                   />
                   <button
                     onClick={() => { const n = Math.min(count, qty + 1); setQty(n); setQtyStr(String(n)); }}
@@ -472,20 +468,20 @@ function CardItem({
                     className="w-6 h-6 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-md transition-colors disabled:opacity-40"
                   >+</button>
                 </div>
-                <p className="text-white/50 text-[10px]">보유 {count}장</p>
+                <p className="text-white/40 text-[10px]">보유 {count}장</p>
 
                 <div className="flex gap-1.5">
                   <button
                     onClick={handleSell}
                     disabled={isPending}
-                    className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-colors"
+                    className="px-3 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-colors"
                   >
                     {isPending ? "..." : "판매"}
                   </button>
                   <button
                     onClick={() => setConfirming(false)}
                     disabled={isPending}
-                    className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold rounded-lg transition-colors"
+                    className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold rounded-lg transition-colors"
                   >
                     취소
                   </button>
@@ -496,11 +492,22 @@ function CardItem({
         )}
       </div>
 
-      {card.current_price > 0 && (
-        <p className="text-[11px] text-center text-gray-400 mt-1">
-          {card.current_price.toLocaleString()} C
+      {/* 카드 이름 + 등급 (카드 아래) */}
+      <div className="mt-1.5 px-0.5">
+        <div className="flex items-center gap-1 justify-center">
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${badgeCls}`}>
+            {RARITY_LABEL[card.rarity] ?? card.rarity}
+          </span>
+        </div>
+        <p className="text-xs font-semibold text-gray-800 text-center leading-tight line-clamp-2 mt-0.5">
+          {card.name}
         </p>
-      )}
+        {card.current_price > 0 && (
+          <p className="text-[10px] text-center text-gray-400 mt-0.5">
+            {card.current_price.toLocaleString()} C
+          </p>
+        )}
+      </div>
     </div>
   );
 }

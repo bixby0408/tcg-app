@@ -38,6 +38,17 @@ const TYPE_STYLE: Record<string, { bg: string; emoji: string }> = {
   default:   { bg: "from-violet-500 via-purple-600 to-indigo-700", emoji: "✨" },
 };
 
+const RARITY_BADGE_DARK: Record<string, string> = {
+  N:   "bg-gray-600/60 text-gray-200",
+  R:   "bg-blue-500/50 text-blue-200",
+  RR:  "bg-violet-500/50 text-violet-200",
+  AR:  "bg-rose-500/50 text-rose-200",
+  SR:  "bg-orange-500/50 text-orange-200",
+  SAR: "bg-amber-500/50 text-amber-200",
+  UR:  "bg-yellow-400/40 text-yellow-200",
+  MUR: "bg-gradient-to-r from-yellow-400/50 to-pink-500/50 text-white",
+};
+
 const RARITY_BORDER: Record<Rarity, string> = {
   N:   "border-gray-500/40",
   R:   "border-blue-400/60",
@@ -426,22 +437,20 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
             const rarity = pc.card.rarity as Rarity;
             const typeStyle = TYPE_STYLE[pc.card.card_type ?? "default"] ?? TYPE_STYLE.default;
             return (
-              <div
-                key={pc.userCardId}
-                className={`relative w-24 h-[134px] rounded-xl overflow-hidden shadow-lg ${RARITY_GLOW[rarity]}`}
-              >
-                {pc.card.image_url ? (
-                  <img src={pc.card.image_url} alt={pc.card.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className={`w-full h-full bg-gradient-to-br ${typeStyle.bg} flex flex-col items-center justify-center gap-1`}>
-                    <span className="text-2xl">{typeStyle.emoji}</span>
-                    <span className="text-[9px] text-white/80 font-bold text-center px-1 leading-tight">{pc.card.name}</span>
-                  </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-1">
-                  <p className="text-[8px] text-white/90 font-bold truncate">{pc.card.name}</p>
-                  <p className="text-[7px] text-white/60">{RARITY_LABEL[rarity] ?? rarity}</p>
+              <div key={pc.userCardId} className="flex flex-col items-center gap-1">
+                <div className={`relative w-20 h-[112px] rounded-xl overflow-hidden shadow-lg ${RARITY_GLOW[rarity]}`}>
+                  {pc.card.image_url ? (
+                    <img src={pc.card.image_url} alt={pc.card.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={`w-full h-full bg-gradient-to-br ${typeStyle.bg} flex flex-col items-center justify-center gap-1`}>
+                      <span className="text-xl">{typeStyle.emoji}</span>
+                    </div>
+                  )}
                 </div>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${RARITY_BADGE_DARK[rarity] ?? RARITY_BADGE_DARK.N}`}>
+                  {rarity}
+                </span>
+                <p className="text-[10px] text-white/80 font-medium text-center leading-tight w-20 line-clamp-2">{pc.card.name}</p>
               </div>
             );
           })}
@@ -450,13 +459,13 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
         {/* 목록 요약 */}
         <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-4">
           <p className="text-xs text-gray-500 mb-3">획득한 카드</p>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {phase.cards.map((pc) => {
               const rarity = pc.card.rarity as Rarity;
               return (
-                <div key={pc.userCardId} className="flex items-center justify-between">
-                  <span className="text-sm text-white font-medium">{pc.card.name}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white/5 border ${RARITY_BORDER[rarity] ?? ""}`}>
+                <div key={pc.userCardId} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white font-medium truncate">{pc.card.name}</span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${RARITY_BADGE_DARK[rarity] ?? RARITY_BADGE_DARK.N}`}>
                     {RARITY_LABEL[rarity] ?? rarity}
                   </span>
                 </div>

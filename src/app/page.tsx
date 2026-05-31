@@ -119,7 +119,7 @@ export default async function LandingPage() {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/5 rounded-full blur-[100px]" />
             </div>
             <div className="relative max-w-3xl mx-auto px-6 py-16">
-              <p className="text-sm text-gray-500 mb-2">안녕하세요 👋</p>
+              <p className="text-sm text-gray-500 mb-2">안녕하세요</p>
               <h1 className="text-4xl lg:text-5xl font-black leading-tight mb-4 tracking-tighter">
                 <span className="text-amber-400">{displayName}</span>님의 카드샵
               </h1>
@@ -131,7 +131,7 @@ export default async function LandingPage() {
               </div>
               <div className="flex items-center justify-center gap-3 flex-wrap">
                 <Link href="/packs" className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm shadow-lg shadow-amber-900/30">
-                  🎴 팩 뽑기
+                  팩 뽑기
                 </Link>
                 <Link href="/cards" className="px-6 py-3 text-gray-300 hover:text-white border border-white/10 hover:border-white/25 rounded-xl transition-colors text-sm">
                   내 컬렉션
@@ -266,9 +266,9 @@ export default async function LandingPage() {
                 <h2 className="text-2xl font-bold">이렇게 코인을 모으세요</h2>
               </div>
               <div className="grid md:grid-cols-3 gap-4">
-                <StepCard num="01" icon="📺" title="SOOP 시청" desc="크롬 확장프로그램을 설치하고 SOOP에서 좋아하는 스트리머를 시청하세요. 10분 = 1,000코인." />
-                <StepCard num="02" icon="🪙" title="코인 적립"  desc="시청 시간에 비례해 자동으로 코인이 적립됩니다. 잔액은 대시보드에서 실시간으로 확인할 수 있어요." />
-                <StepCard num="03" icon="🎴" title="팩 뽑기"   desc="모은 코인으로 팩을 구매하고 N부터 MUR까지 다양한 레어도의 카드를 수집하세요." />
+                <StepCard num="01" title="SOOP 시청" desc="크롬 확장프로그램을 설치하고 SOOP에서 좋아하는 스트리머를 시청하세요. 10분 = 1,000코인." />
+                <StepCard num="02" title="코인 적립" desc="시청 시간에 비례해 자동으로 코인이 적립됩니다. 잔액은 대시보드에서 실시간으로 확인할 수 있어요." />
+                <StepCard num="03" title="팩 뽑기"   desc="모은 코인으로 팩을 구매하고 N부터 MUR까지 다양한 레어도의 카드를 수집하세요." />
               </div>
             </div>
           </section>
@@ -334,9 +334,7 @@ function LoggedInPackCard({ pack, balance }: { pack: Pack; balance: number }) {
       {pack.image_url ? (
         <img src={pack.image_url} alt={pack.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       ) : (
-        <div className="w-full h-full bg-violet-900/30 flex items-center justify-center">
-          <span className="text-7xl opacity-20">📦</span>
-        </div>
+        <div className="w-full h-full bg-violet-900/30" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4 gap-1.5">
         <h3 className="text-sm font-bold text-white leading-tight">{pack.name}</h3>
@@ -363,9 +361,7 @@ function GuestPackCard({ pack }: { pack: Pack }) {
       {pack.image_url ? (
         <img src={pack.image_url} alt={pack.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       ) : (
-        <div className="w-full h-full bg-violet-900/30 flex items-center justify-center">
-          <span className="text-7xl opacity-20">📦</span>
-        </div>
+        <div className="w-full h-full bg-violet-900/30" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4 gap-1.5">
         <h3 className="text-sm font-bold text-white leading-tight">{pack.name}</h3>
@@ -379,13 +375,10 @@ function GuestPackCard({ pack }: { pack: Pack }) {
 }
 
 /* ── 단계 카드 ── */
-function StepCard({ num, icon, title, desc }: { num: string; icon: string; title: string; desc: string }) {
+function StepCard({ num, title, desc }: { num: string; title: string; desc: string }) {
   return (
     <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-colors">
-      <div className="flex items-start gap-4 mb-4">
-        <span className="text-3xl">{icon}</span>
-        <span className="text-4xl font-black text-white/5 leading-none mt-1">{num}</span>
-      </div>
+      <span className="text-4xl font-black text-white/10 leading-none block mb-4">{num}</span>
       <h3 className="text-base font-bold text-white mb-2">{title}</h3>
       <p className="text-sm text-gray-400 leading-relaxed">{desc}</p>
     </div>
@@ -401,5 +394,5 @@ const RARITIES = [
   { code: "SR",  label: "SR ✦✦",    cls: "bg-orange-900/30 border-orange-500/30 text-orange-300" },
   { code: "SAR", label: "SAR ✦✦✦",  cls: "bg-amber-900/30 border-amber-400/40 text-amber-300" },
   { code: "UR",  label: "UR ✦✦✦✦",  cls: "bg-yellow-900/30 border-yellow-300/40 text-yellow-200" },
-  { code: "MUR", label: "MUR 👑",   cls: "bg-gradient-to-r from-pink-900/30 to-purple-900/30 border-yellow-300/50 text-white" },
+  { code: "MUR", label: "MUR",      cls: "bg-gradient-to-r from-pink-900/30 to-purple-900/30 border-yellow-300/50 text-white" },
 ];

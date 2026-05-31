@@ -542,7 +542,7 @@ export default function PackList({ packs, balance, cardCount }: { packs: Pack[];
           <p className="text-sm">판매 중인 팩이 없습니다</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {packs.map((pack) => (
             <PackCard key={pack.id} pack={pack} balance={balance} cardCount={cardCount} onBuy={() => handleBuy(pack)} />
           ))}

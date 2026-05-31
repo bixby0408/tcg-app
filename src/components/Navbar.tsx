@@ -26,7 +26,7 @@ export default async function Navbar() {
     <nav className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
       {/* Logo */}
       <Link
-        href="/dashboard"
+        href="/"
         className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent"
       >
         어인섬 카드샵
@@ -34,7 +34,7 @@ export default async function Navbar() {
 
       {/* Center nav links */}
       <div className="hidden md:flex items-center gap-1">
-        <NavLink href="/dashboard">홈</NavLink>
+        <NavLink href="/">홈</NavLink>
         <NavLink href="/packs">팩 뽑기</NavLink>
         <NavLink href="/cards">내 카드</NavLink>
         <NavLink href="/market">마켓플레이스</NavLink>

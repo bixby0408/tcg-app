@@ -43,9 +43,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 로그인 상태에서 랜딩·로그인·회원가입 접근 시 대시보드로
+  // 로그인 상태에서 로그인·회원가입 접근 시 대시보드로 (홈은 항상 표시)
   const shouldRedirectToDashboard =
-    pathname === "/" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup");
 

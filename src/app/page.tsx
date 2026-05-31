@@ -12,10 +12,12 @@ type Pack = {
 
 export default async function LandingPage() {
   const supabase = await createClient();
-  const { data: packs } = await supabase
-    .from("packs")
-    .select("id, name, description, price, cards_per_pack, image_url")
-    .limit(6);
+  const [{ data: packsData }, { data: userData }] = await Promise.all([
+    supabase.from("packs").select("id, name, description, price, cards_per_pack, image_url").limit(6),
+    supabase.auth.getUser(),
+  ]);
+  const packs = packsData;
+  const user = userData?.user ?? null;
 
   return (
     <div className="min-h-screen bg-[#07070f] text-white overflow-x-hidden">
@@ -32,12 +34,20 @@ export default async function LandingPage() {
           <Link href="/market" className="hover:text-white transition-colors">마켓</Link>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2">
-            로그인
-          </Link>
-          <Link href="/signup" className="text-sm bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg transition-colors font-bold">
-            시작하기
-          </Link>
+          {user ? (
+            <Link href="/dashboard" className="text-sm bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg transition-colors font-bold">
+              대시보드
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2">
+                로그인
+              </Link>
+              <Link href="/signup" className="text-sm bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 rounded-lg transition-colors font-bold">
+                시작하기
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Navbar from "@/components/Navbar";
 import WelcomeModal from "./WelcomeModal";
 
 const RARITY_ORDER = ["MUR", "UR", "SAR", "SR", "AR", "RR", "R", "N"];
+
 const RARITY_BAR: Record<string, string> = {
   N:   "bg-gray-400",
   R:   "bg-blue-400",
@@ -15,9 +15,11 @@ const RARITY_BAR: Record<string, string> = {
   UR:  "bg-yellow-400",
   MUR: "bg-gradient-to-r from-yellow-400 to-amber-500",
 };
+
 const RARITY_LABEL: Record<string, string> = {
-  N: "N", R: "R", RR: "RR", AR: "AR", SR: "SR", SAR: "SAR", UR: "UR", MUR: "MUR",
+  N: "N", R: "R ★", RR: "RR ★★", AR: "AR ✦", SR: "SR ✦✦", SAR: "SAR ✦✦✦", UR: "UR ✦✦✦✦", MUR: "MUR",
 };
+
 const RARITY_FALLBACK: Record<string, string> = {
   N:   "from-gray-300 to-gray-400",
   R:   "from-blue-400 to-blue-600",
@@ -47,23 +49,25 @@ export default async function DashboardPage() {
       .select("id, cost, purchased_at, packs(name)")
       .eq("user_id", user.id)
       .order("purchased_at", { ascending: false })
-      .limit(5),
+      .limit(30),
   ]);
 
   if (!profile?.nickname) redirect("/setup-profile");
 
-  const displayName = profile?.nickname || user.email?.split("@")[0] || "플레이어";
+  type RawCard = { id: string; name: string; rarity: string; image_url: string | null; current_price: number };
+
   const balance = profile?.balance ?? 0;
   const totalCards = userCards?.length ?? 0;
   const uniqueCards = new Set(userCards?.map((uc) => uc.card_id)).size;
+  const duplicates = totalCards - uniqueCards;
   const pullCount = purchases?.length ?? 0;
 
-  // 최근 뽑은 카드 6장 (중복 포함, 실제 뽑은 순서)
-  type RawCard = { id: string; name: string; rarity: string; image_url: string | null; current_price: number };
-  const recentCards = (userCards ?? [])
-    .slice(0, 6)
-    .map((uc) => uc.cards as unknown as RawCard)
-    .filter(Boolean);
+  const totalSpent = (purchases ?? []).reduce((sum, p) => sum + p.cost, 0);
+
+  const collectionValue = (userCards ?? []).reduce((sum, uc) => {
+    const card = uc.cards as unknown as RawCard;
+    return sum + (card?.current_price ?? 0);
+  }, 0);
 
   // 등급별 보유 수
   const rarityMap: Record<string, number> = {};
@@ -74,6 +78,13 @@ export default async function DashboardPage() {
   }
   const maxRarityCount = Math.max(1, ...Object.values(rarityMap));
 
+  // 가장 비싼 카드 TOP 5
+  const topCards = (userCards ?? [])
+    .map((uc) => uc.cards as unknown as RawCard)
+    .filter(Boolean)
+    .sort((a, b) => (b.current_price ?? 0) - (a.current_price ?? 0))
+    .slice(0, 5);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {profile?.welcomed === false && <WelcomeModal />}
@@ -81,124 +92,46 @@ export default async function DashboardPage() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* 웰컴 배너 */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-violet-700 to-purple-800 rounded-2xl p-7 text-white">
-          <div className="absolute -right-8 -top-8 w-48 h-48 bg-white/5 rounded-full" />
-          <div className="absolute right-12 bottom-0 w-32 h-32 bg-white/5 rounded-full" />
-          <div className="relative">
-            <p className="text-sm text-violet-200 mb-1">안녕하세요 👋</p>
-            <h2 className="text-2xl font-bold mb-4">{displayName}님의 카드 유니버스</h2>
-            <div className="flex gap-3 flex-wrap">
-              <Link
-                href="/packs"
-                className="inline-flex items-center gap-2 bg-white text-violet-700 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-violet-50 transition-colors"
-              >
-                🎴 팩 뽑기
-              </Link>
-              <Link
-                href="/cards"
-                className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-              >
-                내 컬렉션 보기
-              </Link>
-            </div>
-          </div>
+        {/* 페이지 헤더 */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">내 통계</h1>
+          <p className="text-sm text-gray-400 mt-0.5">컬렉션 현황과 뽑기 기록을 확인하세요</p>
         </div>
 
-        {/* 스탯 4개 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            icon="💰"
-            label="보유 코인"
-            value={balance.toLocaleString()}
-            unit="C"
-            color="text-violet-600"
-          />
-          <StatCard
-            icon="🃏"
-            label="총 보유 카드"
-            value={totalCards.toLocaleString()}
-            unit="장"
-            color="text-blue-600"
-          />
-          <StatCard
-            icon="🌟"
-            label="보유 종류"
-            value={uniqueCards.toLocaleString()}
-            unit="종"
-            color="text-amber-600"
-          />
-          <StatCard
-            icon="🎰"
-            label="팩 뽑기 횟수"
-            value={pullCount.toLocaleString()}
-            unit="회"
-            color="text-rose-600"
-          />
+        {/* 핵심 지표 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <StatCard label="보유 코인" value={balance.toLocaleString()} unit="C" sub={`총 ${totalSpent.toLocaleString()} C 사용`} accent="text-violet-600" />
+          <StatCard label="총 보유 카드" value={totalCards.toLocaleString()} unit="장" sub={`중복 ${duplicates}장 포함`} accent="text-blue-600" />
+          <StatCard label="보유 종류" value={uniqueCards.toLocaleString()} unit="종" sub={`전체 카드 중 ${totalCards > 0 ? Math.round((uniqueCards / totalCards) * 100) : 0}% 고유`} accent="text-emerald-600" />
+          <StatCard label="컬렉션 가치" value={collectionValue.toLocaleString()} unit="C" sub="보유 카드 현재가 합산" accent="text-amber-600" />
+          <StatCard label="팩 뽑기 횟수" value={pullCount.toLocaleString()} unit="회" sub={pullCount > 0 ? `마지막: ${new Date((purchases ?? [])[0]?.purchased_at).toLocaleDateString("ko-KR")}` : "뽑기 기록 없음"} accent="text-rose-600" />
+          <StatCard label="평균 카드 가치" value={totalCards > 0 ? Math.round(collectionValue / totalCards).toLocaleString() : "0"} unit="C" sub="컬렉션 가치 ÷ 보유 수" accent="text-indigo-600" />
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* 최근 뽑은 카드 */}
-          <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">최근 뽑은 카드</h3>
-              <Link href="/cards" className="text-xs text-violet-600 hover:underline font-medium">
-                전체 보기
-              </Link>
-            </div>
-
-            {recentCards.length === 0 ? (
-              <div className="flex flex-col items-center py-10 text-gray-400">
-                <div className="text-4xl mb-2">🎴</div>
-                <p className="text-sm">아직 뽑은 카드가 없어요</p>
-                <Link href="/packs" className="mt-3 text-xs text-violet-600 hover:underline">
-                  팩 뽑으러 가기 →
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {recentCards.map((card, i) => (
-                  <div key={i} className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-sm">
-                    {card.image_url ? (
-                      <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className={`w-full h-full bg-gradient-to-br ${RARITY_FALLBACK[card.rarity] ?? "from-gray-300 to-gray-400"} flex items-center justify-center`}>
-                        <span className="text-white text-xs font-black opacity-60">{card.rarity}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
-                    <p className="absolute bottom-1 inset-x-1 text-white text-[9px] font-semibold leading-tight text-center line-clamp-2">
-                      {card.name}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
+        <div className="grid md:grid-cols-2 gap-6">
           {/* 등급별 보유 현황 */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">등급별 보유 현황</h3>
+            <h2 className="font-semibold text-gray-900 mb-5">등급별 보유 현황</h2>
             {totalCards === 0 ? (
-              <div className="flex flex-col items-center py-6 text-gray-400">
-                <p className="text-sm">카드가 없어요</p>
-              </div>
+              <p className="text-sm text-gray-400 py-6 text-center">보유 카드가 없습니다</p>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {RARITY_ORDER.map((rarity) => {
                   const count = rarityMap[rarity] ?? 0;
-                  if (count === 0) return null;
-                  const pct = Math.round((count / maxRarityCount) * 100);
+                  const pct = totalCards > 0 ? Math.round((count / totalCards) * 100) : 0;
+                  const barPct = Math.round((count / maxRarityCount) * 100);
                   return (
                     <div key={rarity}>
-                      <div className="flex justify-between text-xs mb-1">
+                      <div className="flex justify-between text-xs mb-1.5">
                         <span className="font-semibold text-gray-700">{RARITY_LABEL[rarity]}</span>
-                        <span className="text-gray-400">{count}장</span>
+                        <span className="text-gray-400">
+                          {count > 0 ? `${count}장 · ${pct}%` : "없음"}
+                        </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${RARITY_BAR[rarity] ?? "bg-gray-400"}`}
-                          style={{ width: `${pct}%` }}
+                          className={`h-full rounded-full transition-all ${RARITY_BAR[rarity] ?? "bg-gray-400"} ${count === 0 ? "opacity-0" : ""}`}
+                          style={{ width: `${barPct}%` }}
                         />
                       </div>
                     </div>
@@ -207,61 +140,87 @@ export default async function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* 최근 뽑기 기록 */}
-          <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">최근 뽑기 기록</h3>
-            {(purchases ?? []).length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-gray-400">
-                <div className="text-3xl mb-2">📋</div>
-                <p className="text-sm">뽑기 기록이 없어요</p>
-              </div>
+          {/* 가치 높은 카드 TOP 5 */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="font-semibold text-gray-900 mb-5">가치 높은 카드 TOP 5</h2>
+            {topCards.length === 0 ? (
+              <p className="text-sm text-gray-400 py-6 text-center">보유 카드가 없습니다</p>
             ) : (
-              <div className="space-y-2">
-                {(purchases ?? []).map((p) => {
-                  const pack = p.packs as unknown as { name: string } | null;
-                  return (
-                    <div key={p.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-sm">
-                          🎴
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{pack?.name ?? "팩"}</p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(p.purchased_at).toLocaleDateString("ko-KR", {
-                              month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-semibold text-violet-600">−{p.cost.toLocaleString()} C</span>
+              <div className="space-y-3">
+                {topCards.map((card, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-xs font-black text-gray-300 w-4 shrink-0">{i + 1}</span>
+                    <div className="w-9 h-12 rounded-lg overflow-hidden shrink-0">
+                      {card.image_url ? (
+                        <img src={card.image_url} alt={card.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${RARITY_FALLBACK[card.rarity] ?? "from-gray-300 to-gray-400"}`} />
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{card.name}</p>
+                      <p className="text-xs text-gray-400">{RARITY_LABEL[card.rarity] ?? card.rarity}</p>
+                    </div>
+                    <span className="text-sm font-bold text-violet-600 shrink-0">
+                      {(card.current_price ?? 0).toLocaleString()} C
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+        </div>
 
-          {/* 빠른 메뉴 + 계정 정보 */}
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <h3 className="font-semibold text-gray-900 mb-4">빠른 메뉴</h3>
-              <div className="space-y-1">
-                <QuickAction href="/packs"   icon="🎴" label="팩 뽑기"      desc="팩을 열어 카드 획득" />
-                <QuickAction href="/cards"   icon="🃏" label="내 컬렉션"    desc="보유 카드 확인·정리" />
-                <QuickAction href="/market"  icon="🏪" label="마켓플레이스" desc="카드 사고팔기" />
-                <QuickAction href="/profile" icon="👤" label="내 프로필"    desc="닉네임·아바타 편집" />
-              </div>
+        {/* 뽑기 이력 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold text-gray-900">뽑기 이력</h2>
+            <span className="text-xs text-gray-400">최근 30건</span>
+          </div>
+          {(purchases ?? []).length === 0 ? (
+            <p className="text-sm text-gray-400 py-8 text-center">뽑기 기록이 없습니다</p>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {(purchases ?? []).map((p, i) => {
+                const pack = p.packs as unknown as { name: string } | null;
+                return (
+                  <div key={p.id} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-300 font-medium w-5 text-right shrink-0">{i + 1}</span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{pack?.name ?? "팩"}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(p.purchased_at).toLocaleDateString("ko-KR", {
+                            year: "numeric", month: "short", day: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-500">−{p.cost.toLocaleString()} C</span>
+                  </div>
+                );
+              })}
             </div>
+          )}
+        </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-              <h3 className="font-semibold text-gray-900">계정 정보</h3>
-              <InfoRow label="이메일" value={user.email ?? ""} />
-              <InfoRow label="가입일" value={new Date(user.created_at).toLocaleDateString("ko-KR")} />
-              <InfoRow label="닉네임" value={profile?.nickname ?? "미설정"} />
+        {/* 계정 정보 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">계정 정보</h2>
+          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-gray-400 mb-0.5">닉네임</p>
+              <p className="font-medium text-gray-800">{profile?.nickname}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 mb-0.5">이메일</p>
+              <p className="font-medium text-gray-800 truncate">{user.email}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 mb-0.5">가입일</p>
+              <p className="font-medium text-gray-800">{new Date(user.created_at).toLocaleDateString("ko-KR")}</p>
             </div>
           </div>
         </div>
@@ -271,41 +230,16 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value, unit, color }: {
-  icon: string; label: string; value: string; unit: string; color: string;
+function StatCard({ label, value, unit, sub, accent }: {
+  label: string; value: string; unit: string; sub: string; accent: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
-      <div className="text-2xl mb-2">{icon}</div>
-      <p className={`text-2xl font-bold ${color}`}>
-        {value} <span className="text-base font-medium text-gray-400">{unit}</span>
+      <p className="text-xs text-gray-400 mb-2">{label}</p>
+      <p className={`text-2xl font-bold ${accent}`}>
+        {value} <span className="text-sm font-medium text-gray-400">{unit}</span>
       </p>
-      <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function QuickAction({ href, icon, label, desc }: {
-  href: string; icon: string; label: string; desc: string;
-}) {
-  return (
-    <Link href={href} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-      <div className="w-9 h-9 bg-gray-100 group-hover:bg-violet-100 rounded-lg flex items-center justify-center text-lg transition-colors shrink-0">
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-800">{label}</p>
-        <p className="text-xs text-gray-400">{desc}</p>
-      </div>
-    </Link>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center text-sm">
-      <span className="text-gray-400">{label}</span>
-      <span className="font-medium text-gray-700 truncate max-w-[150px]">{value}</span>
+      <p className="text-xs text-gray-400 mt-1.5">{sub}</p>
     </div>
   );
 }

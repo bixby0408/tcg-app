@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useActionState } from "react";
-import { createCard, createPack, addCardToPack, removeCardFromPack, deletePack, deleteCard, updateCardPrice, updatePackPrice } from "../actions";
+import { createCard, createPack, addCardToPack, removeCardFromPack, deletePack, deleteCard, updateCardPrice, updatePackPrice, createDexSet, deleteDexSet, addCardToDexSet, removeCardFromDexSet } from "../actions";
 import { createClient } from "@/lib/supabase/client";
 
 type Rarity = "N" | "R" | "RR" | "AR" | "SR" | "SAR" | "UR" | "MUR";
@@ -35,6 +35,20 @@ type PackCard = {
   cards: { name: string; rarity: Rarity } | null;
 };
 
+type DexSet = {
+  id: string;
+  name: string;
+  description: string | null;
+  reward_description: string | null;
+  created_at: string;
+};
+
+type DexSetCard = {
+  set_id: string;
+  card_id: string;
+  cards: { name: string; rarity: Rarity; image_url: string | null } | null;
+};
+
 const RARITY_LABEL: Record<Rarity, string> = {
   N:   "N 일반",
   R:   "R 레어",
@@ -61,17 +75,28 @@ export default function AdminTabs({
   cards,
   packs,
   packCards,
+  dexSets,
+  dexSetCards,
 }: {
   cards: Card[];
   packs: Pack[];
   packCards: PackCard[];
+  dexSets: DexSet[];
+  dexSetCards: DexSetCard[];
 }) {
-  const [tab, setTab] = useState<"cards" | "packs" | "composition">("cards");
+  const [tab, setTab] = useState<"cards" | "packs" | "composition" | "dex">("cards");
+
+  const TAB_LABELS: Record<typeof tab, string> = {
+    cards: "카드 관리",
+    packs: "팩 관리",
+    composition: "팩 구성",
+    dex: "도감 관리",
+  };
 
   return (
     <div>
       <div className="flex gap-2 mb-6 border-b border-gray-200">
-        {(["cards", "packs", "composition"] as const).map((t) => (
+        {(["cards", "packs", "composition", "dex"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -81,7 +106,7 @@ export default function AdminTabs({
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            {t === "cards" ? "카드 관리" : t === "packs" ? "팩 관리" : "팩 구성"}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -90,6 +115,9 @@ export default function AdminTabs({
       {tab === "packs" && <PacksTab packs={packs} />}
       {tab === "composition" && (
         <CompositionTab packs={packs} cards={cards} packCards={packCards} />
+      )}
+      {tab === "dex" && (
+        <DexTab cards={cards} dexSets={dexSets} dexSetCards={dexSetCards} />
       )}
     </div>
   );
@@ -531,6 +559,166 @@ const inputCls =
 
 const submitCls =
   "w-full py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors";
+
+/* ─────────────── 도감 관리 탭 ─────────────── */
+function DexTab({
+  cards,
+  dexSets,
+  dexSetCards,
+}: {
+  cards: Card[];
+  dexSets: DexSet[];
+  dexSetCards: DexSetCard[];
+}) {
+  const [selectedSetId, setSelectedSetId] = useState(dexSets[0]?.id ?? "");
+  const [createState, createAction, createPending] = useActionState(createDexSet, null);
+  const [deleteSetState, deleteSetAction, deleteSetPending] = useActionState(deleteDexSet, null);
+  const [addCardState, addCardAction, addCardPending] = useActionState(addCardToDexSet, null);
+  const [removeCardState, removeCardAction, removeCardPending] = useActionState(removeCardFromDexSet, null);
+
+  const currentSetCards = dexSetCards.filter((sc) => sc.set_id === selectedSetId);
+  const currentCardIds = new Set(currentSetCards.map((sc) => sc.card_id));
+  const availableCards = cards.filter((c) => !currentCardIds.has(c.id));
+
+  return (
+    <div className="grid lg:grid-cols-5 gap-6">
+      {/* 왼쪽: 세트 생성 + 카드 추가 */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* 세트 생성 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">도감 세트 생성</h2>
+          <form action={createAction} className="space-y-3">
+            <Field label="세트 이름 *">
+              <input name="name" required placeholder="일진사과몽 세트" className={inputCls} />
+            </Field>
+            <Field label="설명">
+              <textarea name="description" rows={2} placeholder="이 세트에 대한 설명" className={inputCls} />
+            </Field>
+            <Field label="보상 설명 (미래용)">
+              <input name="reward_description" placeholder="완성 시 코인 500 지급" className={inputCls} />
+            </Field>
+            {createState?.error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{createState.error}</p>}
+            {createState?.success && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">세트가 생성됐습니다!</p>}
+            <button type="submit" disabled={createPending} className={submitCls}>
+              {createPending ? "생성 중..." : "세트 생성"}
+            </button>
+          </form>
+        </div>
+
+        {/* 세트에 카드 추가 */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">세트에 카드 추가</h2>
+          {dexSets.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">세트를 먼저 생성하세요</p>
+          ) : (
+            <>
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">세트 선택</label>
+                <select
+                  value={selectedSetId}
+                  onChange={(e) => setSelectedSetId(e.target.value)}
+                  className={inputCls}
+                >
+                  {dexSets.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <form action={addCardAction} className="space-y-3">
+                <input type="hidden" name="set_id" value={selectedSetId} />
+                <Field label="추가할 카드">
+                  <select name="card_id" required className={inputCls}>
+                    <option value="">카드 선택</option>
+                    {availableCards.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.rarity})
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {addCardState?.error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{addCardState.error}</p>}
+                {addCardState?.success && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">카드가 추가됐습니다!</p>}
+                <button type="submit" disabled={addCardPending || !selectedSetId} className={submitCls}>
+                  {addCardPending ? "추가 중..." : "카드 추가"}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 오른쪽: 세트 목록 */}
+      <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">도감 세트 목록 ({dexSets.length})</h2>
+        {deleteSetState?.error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">{deleteSetState.error}</p>}
+        {removeCardState?.error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">{removeCardState.error}</p>}
+
+        {dexSets.length === 0 ? (
+          <Empty text="생성된 도감 세트가 없어요" />
+        ) : (
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {dexSets.map((set) => {
+              const setCards = dexSetCards.filter((sc) => sc.set_id === set.id);
+              return (
+                <div key={set.id} className="border border-gray-100 rounded-xl p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{set.name}</p>
+                      {set.description && <p className="text-xs text-gray-400 mt-0.5">{set.description}</p>}
+                      {set.reward_description && (
+                        <p className="text-xs text-amber-600 mt-0.5">보상: {set.reward_description}</p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1">{setCards.length}종 카드</p>
+                    </div>
+                    <form action={deleteSetAction}>
+                      <input type="hidden" name="set_id" value={set.id} />
+                      <button
+                        type="submit"
+                        disabled={deleteSetPending}
+                        className="text-xs text-red-400 hover:text-red-600 px-2 py-1 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        세트 삭제
+                      </button>
+                    </form>
+                  </div>
+
+                  {setCards.length === 0 ? (
+                    <p className="text-xs text-gray-300 text-center py-2">카드 없음</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {setCards.map((sc) => (
+                        <div
+                          key={sc.card_id}
+                          className="flex items-center gap-1 bg-gray-50 rounded-lg px-2 py-1"
+                        >
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${sc.cards ? RARITY_COLOR[sc.cards.rarity] : "bg-gray-100 text-gray-500"}`}>
+                            {sc.cards?.rarity ?? "?"}
+                          </span>
+                          <span className="text-xs text-gray-700">{sc.cards?.name ?? sc.card_id}</span>
+                          <form action={removeCardAction}>
+                            <input type="hidden" name="set_id" value={set.id} />
+                            <input type="hidden" name="card_id" value={sc.card_id} />
+                            <button
+                              type="submit"
+                              disabled={removeCardPending}
+                              className="text-gray-300 hover:text-red-400 transition-colors ml-0.5 text-xs leading-none"
+                            >
+                              ✕
+                            </button>
+                          </form>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ─────────────── 이미지 업로드 ─────────────── */
 function ImageUpload({ bucket, label = "이미지" }: { bucket: "cards" | "packs"; label?: string }) {

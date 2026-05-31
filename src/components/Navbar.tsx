@@ -38,6 +38,7 @@ export default async function Navbar() {
         <NavLink href="/packs">팩 뽑기</NavLink>
         <NavLink href="/cards">내 카드</NavLink>
         <NavLink href="/market">마켓플레이스</NavLink>
+        {user && <NavLink href="/collection">도감</NavLink>}
         {user && <NavLink href="/dashboard">대시보드</NavLink>}
         {(profile as any)?.is_admin && (
           <Link

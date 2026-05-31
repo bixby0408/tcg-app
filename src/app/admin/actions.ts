@@ -146,3 +146,67 @@ export async function deleteCard(_: ActionResult, formData: FormData): Promise<A
   revalidatePath("/admin");
   return { success: true };
 }
+
+// ──────────────── 도감 관리 ────────────────
+
+export async function createDexSet(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  const supabase = await getAdminClient();
+  if (!supabase) return { error: "권한이 없습니다" };
+
+  const { error } = await supabase.from("dex_sets").insert({
+    name: formData.get("name") as string,
+    description: (formData.get("description") as string) || null,
+    reward_description: (formData.get("reward_description") as string) || null,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/collection");
+  return { success: true };
+}
+
+export async function deleteDexSet(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  const supabase = await getAdminClient();
+  if (!supabase) return { error: "권한이 없습니다" };
+
+  const { error } = await supabase
+    .from("dex_sets")
+    .delete()
+    .eq("id", formData.get("set_id") as string);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/collection");
+  return { success: true };
+}
+
+export async function addCardToDexSet(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  const supabase = await getAdminClient();
+  if (!supabase) return { error: "권한이 없습니다" };
+
+  const { error } = await supabase.from("dex_set_cards").insert({
+    set_id: formData.get("set_id") as string,
+    card_id: formData.get("card_id") as string,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/collection");
+  return { success: true };
+}
+
+export async function removeCardFromDexSet(_: ActionResult, formData: FormData): Promise<ActionResult> {
+  const supabase = await getAdminClient();
+  if (!supabase) return { error: "권한이 없습니다" };
+
+  const { error } = await supabase
+    .from("dex_set_cards")
+    .delete()
+    .eq("set_id", formData.get("set_id") as string)
+    .eq("card_id", formData.get("card_id") as string);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/collection");
+  return { success: true };
+}

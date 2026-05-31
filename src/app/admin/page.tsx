@@ -18,10 +18,18 @@ export default async function AdminPage() {
 
   if (!profile?.is_admin) redirect("/dashboard");
 
-  const [{ data: cards }, { data: packs }, { data: packCards }] = await Promise.all([
+  const [
+    { data: cards },
+    { data: packs },
+    { data: packCards },
+    { data: dexSets },
+    { data: dexSetCards },
+  ] = await Promise.all([
     supabase.from("cards").select("*").order("created_at", { ascending: false }),
     supabase.from("packs").select("*").order("created_at", { ascending: false }),
     supabase.from("pack_cards").select("*, cards(name, rarity)"),
+    supabase.from("dex_sets").select("*").order("created_at", { ascending: true }),
+    supabase.from("dex_set_cards").select("set_id, card_id, cards(name, rarity, image_url)"),
   ]);
 
   return (
@@ -36,6 +44,8 @@ export default async function AdminPage() {
           cards={(cards ?? []) as any}
           packs={(packs ?? []) as any}
           packCards={(packCards ?? []) as any}
+          dexSets={(dexSets ?? []) as any}
+          dexSetCards={(dexSetCards ?? []) as any}
         />
       </main>
     </div>

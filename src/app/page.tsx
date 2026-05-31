@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import PullsTicker, { type TickerPull } from "./_components/PullsTicker";
 
 type Pack = {
   id: string;
@@ -42,10 +43,36 @@ const RARITY_FALLBACK: Record<string, string> = {
 export default async function LandingPage() {
   const supabase = await createClient();
 
-  const [{ data: packsData }, { data: userData }] = await Promise.all([
+  const [{ data: packsData }, { data: userData }, { data: recentPullsRaw }] = await Promise.all([
     supabase.from("packs").select("id, name, description, price, cards_per_pack, image_url").limit(6),
     supabase.auth.getUser(),
+    supabase
+      .from("user_cards")
+      .select("user_id, cards!inner(name, rarity)")
+      .order("acquired_at", { ascending: false })
+      .limit(300),
   ]);
+
+  // UR/MUR만 필터링
+  type PullRaw = { user_id: string; cards: { name: string; rarity: string } };
+  const highPulls = (recentPullsRaw as unknown as PullRaw[] ?? [])
+    .filter(r => r.cards && (r.cards.rarity === "UR" || r.cards.rarity === "MUR"))
+    .slice(0, 20);
+
+  let tickerPulls: TickerPull[] = [];
+  if (highPulls.length > 0) {
+    const userIds = [...new Set(highPulls.map(p => p.user_id))];
+    const { data: nickData } = await supabase
+      .from("profiles")
+      .select("id, nickname")
+      .in("id", userIds);
+    const nickMap = Object.fromEntries((nickData ?? []).map(p => [p.id, p.nickname ?? "누군가"]));
+    tickerPulls = highPulls.map(p => ({
+      cardName: p.cards.name,
+      rarity: p.cards.rarity as "UR" | "MUR",
+      nickname: nickMap[p.user_id] ?? "누군가",
+    }));
+  }
 
   const packs = packsData ?? [];
   const user = userData?.user ?? null;
@@ -110,11 +137,16 @@ export default async function LandingPage() {
         </div>
       </nav>
 
+      {/* ── 최근 UR/MUR 뽑기 티커 ── */}
+      <div className="pt-[57px]">
+        <PullsTicker pulls={tickerPulls} />
+      </div>
+
       {user ? (
         /* ════════════ 로그인 상태 ════════════ */
         <>
           {/* ── 로그인 Hero ── */}
-          <section className="relative pt-16 min-h-[45vh] flex flex-col items-center justify-center text-center overflow-hidden">
+          <section className="relative min-h-[45vh] flex flex-col items-center justify-center text-center overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-amber-500/5 rounded-full blur-[100px]" />
             </div>
@@ -201,7 +233,7 @@ export default async function LandingPage() {
         /* ════════════ 비로그인 상태 ════════════ */
         <>
           {/* ── Hero ── */}
-          <section className="relative pt-16 min-h-[70vh] flex flex-col items-center justify-center text-center overflow-hidden">
+          <section className="relative min-h-[70vh] flex flex-col items-center justify-center text-center overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-amber-500/5 rounded-full blur-[120px]" />
               <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-violet-700/10 rounded-full blur-[100px]" />

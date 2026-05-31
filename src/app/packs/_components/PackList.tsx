@@ -559,9 +559,9 @@ function PackCard({ pack, balance, cardCount, onBuy }: { pack: Pack; balance: nu
   const atLimit = cardCount >= 1000;
 
   return (
-    <div className="overflow-hidden bg-gradient-to-b from-violet-900/30 to-purple-950/60 border border-white/10 rounded-2xl hover:border-violet-500/40 transition-all group flex flex-col">
+    <div className="overflow-hidden bg-gradient-to-b from-violet-900/30 to-purple-950/60 rounded-2xl transition-all group flex flex-col">
       {/* 메인 이미지 영역 */}
-      <div className="relative w-full h-52 overflow-hidden rounded-t-2xl bg-violet-900/20 flex-shrink-0">
+      <div className="relative w-full h-80 overflow-hidden rounded-t-2xl bg-violet-900/20 flex-shrink-0">
         {pack.image_url ? (
           <img
             src={pack.image_url}

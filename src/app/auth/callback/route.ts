@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type");
 
   if (token_hash && type) {
-    const response = NextResponse.redirect(`${origin}/dashboard`);
+    const response = NextResponse.redirect(`${origin}/`);
     const supabase = makeSupabase(request, response);
 
     const { error } = await supabase.auth.verifyOtp({
@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const raw = searchParams.get('next') ?? '/dashboard';
-    const next = raw.startsWith('/') ? raw : '/dashboard'; // open redirect 방지
+    const raw = searchParams.get('next') ?? '/';
+    const next = raw.startsWith('/') ? raw : '/'; // open redirect 방지
     const response = NextResponse.redirect(`${origin}${next}`);
     const supabase = makeSupabase(request, response);
     await supabase.auth.exchangeCodeForSession(code);
     return response;
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`);
+  return NextResponse.redirect(`${origin}/`);
 }

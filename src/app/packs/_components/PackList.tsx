@@ -559,45 +559,34 @@ function PackCard({ pack, balance, cardCount, onBuy }: { pack: Pack; balance: nu
   const atLimit = cardCount >= 1000;
 
   return (
-    <div className="overflow-hidden bg-gradient-to-b from-violet-900/30 to-purple-950/60 rounded-2xl transition-all group flex flex-col">
-      {/* 메인 이미지 영역 */}
-      <div className="relative w-full h-80 overflow-hidden rounded-t-2xl bg-violet-900/20 flex-shrink-0">
-        {pack.image_url ? (
-          <img
-            src={pack.image_url}
-            alt={pack.name}
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-7xl opacity-20">📦</span>
-          </div>
+    <div className="relative overflow-hidden rounded-2xl group aspect-[3/4] cursor-pointer">
+      {/* 팩 이미지 (풀블리드) */}
+      {pack.image_url ? (
+        <img
+          src={pack.image_url}
+          alt={pack.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+      ) : (
+        <div className="w-full h-full bg-violet-900/30 flex items-center justify-center">
+          <span className="text-7xl opacity-20">📦</span>
+        </div>
+      )}
+
+      {/* 하단 정보 오버레이 */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent flex flex-col justify-end p-4 gap-2">
+        <h3 className="text-base font-bold text-white leading-tight">{pack.name}</h3>
+        {pack.description && (
+          <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{pack.description}</p>
         )}
-        {/* 하단 그라디언트 페이드 */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0818] via-transparent to-transparent" />
-        {/* 카드 수 뱃지 */}
-        <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-xs text-gray-300 px-2.5 py-1 rounded-lg border border-white/10">
-          {pack.cards_per_pack}장
-        </div>
-      </div>
-
-      {/* 팩 정보 */}
-      <div className="p-5 flex flex-col gap-3 flex-1">
-        <div>
-          <h3 className="text-lg font-bold text-white leading-tight">{pack.name}</h3>
-          {pack.description && (
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{pack.description}</p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="text-xl font-bold text-amber-400">{pack.price.toLocaleString()} C</span>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-lg font-bold text-amber-400">{pack.price.toLocaleString()} C</span>
           <button
             onClick={onBuy}
             disabled={!canAfford || atLimit}
-            className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
               atLimit
-                ? "bg-red-900/30 text-red-400 cursor-not-allowed"
+                ? "bg-red-900/40 text-red-400 cursor-not-allowed"
                 : canAfford
                   ? "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/40"
                   : "bg-white/5 text-gray-600 cursor-not-allowed"
@@ -606,6 +595,11 @@ function PackCard({ pack, balance, cardCount, onBuy }: { pack: Pack; balance: nu
             {atLimit ? "한도 초과" : canAfford ? "뽑기" : "코인 부족"}
           </button>
         </div>
+      </div>
+
+      {/* 장수 뱃지 */}
+      <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-xs text-gray-300 px-2.5 py-1 rounded-lg">
+        {pack.cards_per_pack}장
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import PullsTicker, { type TickerPull } from "./_components/PullsTicker";
 
 type Pack = {
@@ -43,10 +43,12 @@ const RARITY_FALLBACK: Record<string, string> = {
 export default async function LandingPage() {
   const supabase = await createClient();
 
+  const adminClient = createAdminClient();
+
   const [{ data: packsData }, { data: userData }, { data: recentPullsRaw }] = await Promise.all([
     supabase.from("packs").select("id, name, description, price, cards_per_pack, image_url").limit(6),
     supabase.auth.getUser(),
-    supabase
+    adminClient
       .from("user_cards")
       .select("user_id, cards!inner(name, rarity)")
       .order("acquired_at", { ascending: false })

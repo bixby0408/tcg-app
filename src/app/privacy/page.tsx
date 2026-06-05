@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-[#07070f] text-gray-300">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-2xl font-bold text-white mb-2">개인정보처리방침</h1>
-        <p className="text-sm text-gray-500 mb-10">최종 수정일: 2026년 5월 30일</p>
+        <p className="text-sm text-gray-500 mb-10">최종 수정일: 2026년 6월 5일</p>
 
         <section className="mb-10">
           <p className="leading-relaxed">
@@ -120,6 +120,12 @@ export default function PrivacyPage() {
             <li>확장프로그램은 SOOP 도메인의 페이지에만 동작하며 다른 웹사이트의 정보에 접근하지 않습니다.</li>
             <li>인증 토큰은 브라우저 로컬 스토리지(chrome.storage.local)에만 저장되며 제3자에게 전달되지 않습니다.</li>
             <li>시청 기록은 코인 적립 목적으로만 자체 서버에 전송되며 마케팅·광고 목적으로 활용되지 않습니다.</li>
+            <li>
+              <strong className="text-gray-200">scripting 권한 사용:</strong> 확장프로그램 설치·업데이트·브라우저 재시작 시
+              이미 열려 있는 SOOP 탭에 콘텐츠 스크립트를 자동으로 주입하기 위해 사용됩니다.
+              이 과정에서 추가적인 개인정보는 수집되지 않으며, 주입 대상은 manifest에 선언된
+              SOOP 도메인(sooplive.com, sooplive.co.kr, soop.com, afreecatv.com)으로만 제한됩니다.
+            </li>
           </ul>
         </Section>
 
@@ -147,7 +153,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <p className="mt-12 text-xs text-gray-600 text-center">시행일: 2026년 5월 30일</p>
+        <p className="mt-12 text-xs text-gray-600 text-center">시행일: 2026년 6월 5일</p>
       </div>
     </div>
   );
